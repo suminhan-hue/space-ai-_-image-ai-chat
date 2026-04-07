@@ -1,0 +1,10 @@
+{
+  "name": "ohouse-ai-prototype",
+  "version": "1.0.0",
+  "private": true,
+  "description": "오늘의집 AI 채팅 기반 상품 추천 인터랙티브 프로토타입",
+  "type": "module",
+  "engines": {
+    "node": ">=18.x"
+  }
+}
