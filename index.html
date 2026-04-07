@@ -2,7 +2,9 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>오늘의집 AI Prototype</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
@@ -11,13 +13,18 @@
   --fg:#2f3438;--fgWeak:#8c8c8c;--bgWeak:#f5f5f5;--border:#e0e0e0;
   --divider:#ededed;--brand:#00a1ff;--brandLight:#f0f8fc;
 }
+html,body{height:100%;overflow:hidden}
 body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
-  background:#e8e8e8;display:flex;justify-content:center;align-items:center;
-  min-height:100vh;letter-spacing:-0.3px;color:var(--fg);
-  -webkit-font-smoothing:antialiased}
-.phone{width:375px;height:812px;background:#fff;border-radius:40px;
-  overflow:hidden;position:relative;
-  box-shadow:0 20px 60px rgba(0,0,0,.25),0 0 0 1px rgba(0,0,0,.1);
+  background:#fff;margin:0;letter-spacing:-0.3px;color:var(--fg);
+  -webkit-font-smoothing:antialiased;
+  width:100vw;height:100vh;height:100dvh;overscroll-behavior:none}
+.phone{width:100%;height:100%;background:#fff;
+  overflow:hidden;position:relative}
+/* 데스크톱에서는 모바일 프레임 없이 화면 중앙에 375px 고정 표시 */
+@media (min-width:768px){
+  body{background:#e8e8e8;display:flex;justify-content:center;align-items:center;overflow:hidden}
+  .phone{width:375px;height:812px;border-radius:40px;
+    box-shadow:0 20px 60px rgba(0,0,0,.25),0 0 0 1px rgba(0,0,0,.1)}
 }
 /* Home indicator */
 .home-indicator{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
