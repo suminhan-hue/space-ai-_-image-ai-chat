@@ -378,12 +378,10 @@ body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
     linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
   background-size:30px 30px;
   z-index:0}
-/* 3D room clip — replicates Figma frame (411x393 box, image cropped to middle region) */
-#screen-placement .placement-room-clip{position:absolute;left:50%;top:50%;
-  transform:translate(-50%,-50%);width:411px;height:393px;overflow:hidden;
-  z-index:1;pointer-events:none}
-#screen-placement .placement-room-image{position:absolute;left:0;top:-47%;
-  width:99.92%;height:225.8%;max-width:none}
+/* 3D room with edit controls (Figma 1395:10422 - 406x321 centered) */
+#screen-placement .placement-room-image{position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);width:406px;height:auto;max-width:100%;
+  z-index:1;pointer-events:none;object-fit:contain}
 /* Top nav with X close */
 #screen-placement .placement-top-nav{position:absolute;top:50px;left:0;right:0;
   height:44px;display:flex;align-items:center;justify-content:flex-end;
@@ -1038,10 +1036,8 @@ body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
 
   <!-- ===== SCREEN 4: Placement (배치화면, Figma 1390:9912) ===== -->
   <div class="screen slide-down" id="screen-placement">
-    <!-- 3D room with edit controls (clipped from larger asset to hide top icons & bottom carousel) -->
-    <div class="placement-room-clip">
-      <img class="placement-room-image" src="https://www.figma.com/api/mcp/asset/fcdb33a4-a40c-4b2d-abea-ec0b7cfeb180" alt="">
-    </div>
+    <!-- 3D room with edit controls (Figma 1395:10422) -->
+    <img class="placement-room-image" src="https://www.figma.com/api/mcp/asset/25ccd88a-d800-49e5-a6e6-c7f467943e28" alt="">
     <!-- Top nav: only X close at right -->
     <div class="placement-top-nav">
       <button class="placement-close-btn" onclick="closePlacement()" aria-label="닫기">
