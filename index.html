@@ -576,22 +576,22 @@ body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
   border-radius:8px;overflow:hidden;position:relative}
 .composited-img img{position:absolute;height:105.99%;left:-4.89%;top:-3.37%;
   width:108.16%;max-width:none;object-fit:cover;display:block}
-/* Swipeable comparison carousel (합성 전/후 비교) */
+/* Swipeable comparison carousel (Figma 1431:5618) */
 .composited-carousel{position:relative;width:343px;height:458px;margin:0 0 20px;
-  border-radius:8px;overflow:hidden;
+  overflow:hidden;
   user-select:none;-webkit-user-select:none;touch-action:pan-y}
-.composited-carousel-track{display:flex;width:100%;height:100%;
+.composited-carousel-track{display:flex;gap:6px;width:100%;height:100%;
   will-change:transform;cursor:grab}
 .composited-carousel-track.dragging{cursor:grabbing}
 .composited-carousel-track.animating{transition:transform .35s cubic-bezier(0.22,0.61,0.36,1)}
-.composited-carousel-slide{flex-shrink:0;width:100%;height:100%;position:relative;
-  overflow:hidden}
+.composited-carousel-slide{flex-shrink:0;width:100%;height:100%;
+  position:relative;overflow:hidden;border-radius:8px}
 .composited-carousel-slide img{position:absolute;height:105.99%;left:-4.89%;top:-3.37%;
   width:108.16%;max-width:none;object-fit:cover;display:block;pointer-events:none}
 .composited-carousel-pagination{position:absolute;bottom:12px;left:50%;
-  transform:translateX(-50%);background:rgba(0,0,0,0.5);color:#fff;
-  font-size:12px;padding:4px 10px;border-radius:99px;font-weight:500;
-  pointer-events:none;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+  transform:translateX(-50%);background:rgba(0,0,0,0.4);color:#fff;
+  font-size:12px;line-height:16px;padding:4px 8px;border-radius:30px;
+  font-weight:500;pointer-events:none;letter-spacing:-0.3px;z-index:2}
 .composited-carousel-sparkle{position:absolute;bottom:12px;right:12px;
   width:18px;height:18px;pointer-events:none}
 .composited-carousel-sparkle svg{width:100%;height:100%}
@@ -2059,7 +2059,9 @@ async function continuePhotoAnalysis(roomImgUrl) {
   // 결과 화면은 자동 스크롤 X — 유저가 직접 스크롤하도록
 }
 
-// === 합성 전/후 비교 카로셀 (transform 기반, 부드러운 스와이프) ===
+// === 합성 전/후 비교 카로셀 (Figma 1431:5618) ===
+const SLIDE_GAP = 6;
+const PEEK_PX = 6;
 function createCompositedCarousel(images) {
   const carousel = document.createElement('div');
   carousel.className = 'composited-carousel';
@@ -2078,35 +2080,39 @@ function createCompositedCarousel(images) {
   pagination.className = 'composited-carousel-pagination';
   carousel.appendChild(pagination);
 
-  // 스파클 아이콘 (우측 하단)
+  // 스파클 아이콘
   const sparkle = document.createElement('div');
   sparkle.className = 'composited-carousel-sparkle';
   sparkle.innerHTML = '<svg viewBox="0 0 24 24" fill="none"><path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="#00a1ff"/></svg>';
   carousel.appendChild(sparkle);
 
-  // 디폴트로 마지막 슬라이드(=새 이미지)
-  let currentIdx = images.length - 1;
+  let currentIdx = images.length - 1; // 디폴트로 마지막 슬라이드
   const total = images.length;
+
+  function getWidth() { return carousel.clientWidth; }
+  function offsetForIdx(idx) {
+    if (idx === 0) return 0;
+    const w = getWidth();
+    return -idx * (w + SLIDE_GAP) + (PEEK_PX + SLIDE_GAP);
+  }
 
   function setIndex(idx, animate) {
     currentIdx = Math.max(0, Math.min(total - 1, idx));
     track.classList.toggle('animating', !!animate);
-    track.style.transform = `translateX(${-currentIdx * 100}%)`;
+    track.style.transform = `translateX(${offsetForIdx(currentIdx)}px)`;
     pagination.textContent = `${currentIdx + 1}/${total}`;
   }
-  // 즉시 마지막 슬라이드로 위치 (애니메이션 없이)
-  setIndex(currentIdx, false);
+  // 즉시 마지막 슬라이드 (애니메이션 없이) - 레이아웃 완료 후 적용
+  requestAnimationFrame(() => requestAnimationFrame(() => setIndex(currentIdx, false)));
 
-  // Pointer 드래그 (데스크톱+모바일 통합)
+  // Pointer 드래그
   let isDown = false, startX = 0, startTransform = 0, dragDx = 0, startTime = 0;
-  function getWidth() { return carousel.clientWidth; }
 
   track.addEventListener('pointerdown', (e) => {
-    isDown = true;
-    dragDx = 0;
+    isDown = true; dragDx = 0;
     startX = e.clientX;
     startTime = Date.now();
-    startTransform = -currentIdx * getWidth();
+    startTransform = offsetForIdx(currentIdx);
     track.classList.remove('animating');
     track.classList.add('dragging');
     try { track.setPointerCapture(e.pointerId); } catch(_) {}
@@ -2114,10 +2120,10 @@ function createCompositedCarousel(images) {
   track.addEventListener('pointermove', (e) => {
     if (!isDown) return;
     dragDx = e.clientX - startX;
-    // 양 끝에서 저항 추가
     let tx = startTransform + dragDx;
-    const minX = -(total - 1) * getWidth();
-    if (tx > 0) tx = tx * 0.3;
+    const maxX = offsetForIdx(0);
+    const minX = offsetForIdx(total - 1);
+    if (tx > maxX) tx = maxX + (tx - maxX) * 0.3;
     else if (tx < minX) tx = minX + (tx - minX) * 0.3;
     track.style.transform = `translateX(${tx}px)`;
   });
@@ -2127,9 +2133,8 @@ function createCompositedCarousel(images) {
     track.classList.remove('dragging');
     const w = getWidth();
     const elapsed = Date.now() - startTime;
-    const velocity = Math.abs(dragDx) / Math.max(1, elapsed); // px/ms
+    const velocity = Math.abs(dragDx) / Math.max(1, elapsed);
     let nextIdx = currentIdx;
-    // 빠른 플릭 또는 30% 이상 드래그 시 슬라이드 변경
     if (Math.abs(dragDx) > w * 0.3 || velocity > 0.5) {
       nextIdx = dragDx < 0 ? currentIdx + 1 : currentIdx - 1;
     }
