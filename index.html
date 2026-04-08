@@ -13,19 +13,13 @@
   --fg:#2f3438;--fgWeak:#8c8c8c;--bgWeak:#f5f5f5;--border:#e0e0e0;
   --divider:#ededed;--brand:#00a1ff;--brandLight:#f0f8fc;
 }
-html,body{height:100%;overflow:hidden}
 body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
-  background:#fff;margin:0;letter-spacing:-0.3px;color:var(--fg);
-  -webkit-font-smoothing:antialiased;
-  width:100vw;height:100vh;height:100dvh;overscroll-behavior:none}
-.phone{width:100%;height:100%;background:#fff;
-  overflow:hidden;position:relative}
-/* 데스크톱에서는 모바일 프레임 없이 화면 중앙에 375px 고정 표시 */
-@media (min-width:768px){
-  body{background:#e8e8e8;display:flex;justify-content:center;align-items:center;overflow:hidden}
-  .phone{width:375px;height:812px;border-radius:40px;
-    box-shadow:0 20px 60px rgba(0,0,0,.25),0 0 0 1px rgba(0,0,0,.1)}
-}
+  background:#e8e8e8;display:flex;justify-content:center;align-items:center;
+  min-height:100vh;letter-spacing:-0.3px;color:var(--fg);
+  -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+.phone{width:375px;height:812px;background:#fff;border-radius:40px;
+  overflow:hidden;position:relative;
+  box-shadow:0 20px 60px rgba(0,0,0,.25),0 0 0 1px rgba(0,0,0,.1)}
 /* Home indicator */
 .home-indicator{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
   width:134px;height:5px;background:#000;border-radius:100px;z-index:1000}
@@ -188,7 +182,7 @@ body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
 .followup{display:flex;align-items:center;gap:6px;padding:8px 0;cursor:pointer;
   transition:opacity .15s}
 .followup:hover{opacity:.7}
-.followup-icon{flex-shrink:0;width:20px;height:20px;transform:scaleX(-1)}
+.followup-icon{flex-shrink:0;width:20px;height:20px;transform:rotate(180deg)}
 .followup-icon img{width:100%;height:100%}
 .followup-text{font-size:14px;font-weight:500;line-height:20px}
 
@@ -569,13 +563,40 @@ body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
 .entry-feed-desc{font-size:14px;font-weight:500;color:#8c8c8c;
   line-height:20px;letter-spacing:-0.3px;margin-top:2px}
 
-/* ===== Composited image card in chat ===== */
-.composited-img{width:343px;height:458px;border-radius:8px;overflow:hidden;
-  margin:0 0 20px}
-.composited-img img{width:100%;height:100%;object-fit:cover}
+/* ===== Composited image card in chat (Figma 1431:5840 정확한 사양) ===== */
+.composited-img{width:343px;height:458px;margin:0 0 20px;
+  border-radius:8px;overflow:hidden;position:relative}
+.composited-img img{position:absolute;height:105.99%;left:-4.89%;top:-3.37%;
+  width:108.16%;max-width:none;object-fit:cover;display:block}
+/* Swipeable comparison carousel (합성 전/후 비교) */
+.composited-carousel{position:relative;width:343px;height:458px;margin:0 0 20px;
+  border-radius:8px;overflow:hidden;
+  user-select:none;-webkit-user-select:none;touch-action:pan-y}
+.composited-carousel-track{display:flex;width:100%;height:100%;
+  will-change:transform;cursor:grab}
+.composited-carousel-track.dragging{cursor:grabbing}
+.composited-carousel-track.animating{transition:transform .35s cubic-bezier(0.22,0.61,0.36,1)}
+.composited-carousel-slide{flex-shrink:0;width:100%;height:100%;position:relative;
+  overflow:hidden}
+.composited-carousel-slide img{position:absolute;height:105.99%;left:-4.89%;top:-3.37%;
+  width:108.16%;max-width:none;object-fit:cover;display:block;pointer-events:none}
+.composited-carousel-pagination{position:absolute;bottom:12px;left:50%;
+  transform:translateX(-50%);background:rgba(0,0,0,0.5);color:#fff;
+  font-size:12px;padding:4px 10px;border-radius:99px;font-weight:500;
+  pointer-events:none;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.composited-carousel-sparkle{position:absolute;bottom:12px;right:12px;
+  width:18px;height:18px;pointer-events:none}
+.composited-carousel-sparkle svg{width:100%;height:100%}
 .combined-products-title{font-size:20px;font-weight:600;line-height:28px;
   letter-spacing:-0.3px;margin-bottom:12px;color:#2f3438}
 .combined-products{display:flex;gap:6px;margin-bottom:20px}
+/* 카테고리별 추천 상품 */
+.category-subtitle{font-size:17px;font-weight:600;line-height:22px;
+  letter-spacing:-0.3px;color:#2f3438;margin:0 0 12px 0;padding:0}
+.category-product-scroll{display:flex;gap:6px;overflow-x:auto;padding:0 16px 20px;
+  margin:0 -16px;-webkit-overflow-scrolling:touch}
+.category-product-scroll::-webkit-scrollbar{display:none}
+.category-product-scroll .combined-product{flex-shrink:0}
 .combined-product{width:140px;display:flex;flex-direction:column;gap:6px}
 .combined-product-img{width:140px;aspect-ratio:1;border-radius:5px;overflow:hidden;
   border:1px solid rgba(0,0,0,0.05);position:relative}
@@ -1408,7 +1429,7 @@ function createFollowups() {
     }
     const fu = document.createElement('div');
     fu.className = 'followup';
-    fu.innerHTML = `<div class="followup-icon"><img src="/assets/8bf9909e-fb57-450e-aeb8-a0f7d6172277.svg" alt="reply"></div><div class="followup-text">${text}</div>`;
+    fu.innerHTML = `<div class="followup-icon"><img src="/assets/arrow-reply.svg" alt="reply"></div><div class="followup-text">${text}</div>`;
     fu.onclick = () => handleFollowupClick(text);
     wrap.appendChild(fu);
   });
@@ -1887,10 +1908,12 @@ function regenerateCompositeResult() {
   text.className = 'msg-ai-text';
   text.innerHTML = '<p>선택한 상품을 방 사진과 합성했어요</p>';
 
-  const compImg = document.createElement('div');
-  compImg.className = 'composited-img';
-  compImg.innerHTML = '<img src="/assets/be3b420e-058a-4e3a-a915-a385c6f8af3f.jpg" alt="새 합성 이미지">';
-  text.appendChild(compImg);
+  // 합성 전/후 비교 카로셀 (이전 합성 결과 → 새 합성 결과)
+  const carousel = createCompositedCarousel([
+    '/assets/6b7e743b-9ae1-4031-b8f6-01a4ed867296.jpg',
+    '/assets/be3b420e-058a-4e3a-a915-a385c6f8af3f.jpg'
+  ]);
+  text.appendChild(carousel);
 
   const title = document.createElement('div');
   title.className = 'combined-products-title';
@@ -1920,7 +1943,7 @@ function regenerateCompositeResult() {
   appendHtml('<div class="chat-item-body">해당 스타일 마음에 드시나요?\n추가적인 상품 합성도 받아볼 수 있어요</div>');
   const fu = document.createElement('div');
   fu.className = 'followup';
-  fu.innerHTML = '<div class="followup-icon"><img src="/assets/8bf9909e-fb57-450e-aeb8-a0f7d6172277.svg" alt="reply"></div><img class="followup-badge-icon" src="/assets/sparkles-house-filled.svg" alt=""><div class="followup-text">다른 추천 상품도 합성하기</div>';
+  fu.innerHTML = '<div class="followup-icon"><img src="/assets/arrow-reply.svg" alt="reply"></div><img class="followup-badge-icon" src="/assets/sparkles-house-filled.svg" alt=""><div class="followup-text">다른 추천 상품도 합성하기</div>';
   fu.onclick = () => openProductSheet();
   chatBody.appendChild(fu);
 
@@ -1968,16 +1991,14 @@ async function continuePhotoAnalysis(roomImgUrl) {
   aiText.className = 'msg-ai-text';
   aiText.innerHTML =
     '<p>공간에 어울리는 상품을 추가해 방 사진과 합성하고 관련 상품을 추천해드릴게요</p>' +
+    '<hr>' +
     '<h1>코지하고 포근한 취향의 공간</h1>' +
-    '<p><strong>📍공간진단</strong></p>' +
-    '<p>따뜻하고 깔끔한 웜 화이트+원목 내추럴 북유럽 스타일지만 포인트 컬러와 텍스처 오브제 부재로 단조로운 편이에요</p>' +
-    '<p><strong>🛍️ 이 공간에 추천하는 상품</strong></p>' +
-    '<ul><li>러그, 오브제</li></ul>';
+    '<p>따뜻하고 깔끔한 웜 화이트+원목 내추럴 북유럽 스타일지만 포인트 컬러와 텍스처 오브제 부재로 단조로운 편이에요</p>';
 
-  // Composited image
+  // 첫 합성 결과 — 단일 이미지 (캐로셀/인디케이터 없음, Figma 1431:5840)
   const compImg = document.createElement('div');
   compImg.className = 'composited-img';
-  compImg.innerHTML = '<img src="/assets/ee3f1c82-71dd-46a8-b91e-fe5d313bba9a.jpg" alt="합성 이미지">';
+  compImg.innerHTML = '<img src="/assets/6b7e743b-9ae1-4031-b8f6-01a4ed867296.jpg" alt="합성 이미지">';
   aiText.appendChild(compImg);
 
   // 이미지에 합성된 상품 section
@@ -2008,16 +2029,151 @@ async function continuePhotoAnalysis(roomImgUrl) {
   aiMsg.appendChild(aiText);
   chatBody.appendChild(aiMsg);
 
-  // Divider + 후속 메시지 + 다른 상품으로 조합해보기 followup
+  // 카테고리별 추천 상품 섹션
+  appendCategoryRecommendations();
+
+  // Divider + 후속 메시지 + 추천된 다른 상품도 합성해보기 followup
   appendDivider();
   appendHtml('<div class="chat-item-body">해당 스타일 마음에 드시나요?\n추가적인 상품 합성도 받아볼 수 있어요</div>');
 
   const fu = document.createElement('div');
   fu.className = 'followup';
-  fu.innerHTML = '<div class="followup-icon"><img src="/assets/8bf9909e-fb57-450e-aeb8-a0f7d6172277.svg" alt="reply"></div><img class="followup-badge-icon" src="/assets/sparkles-house-filled.svg" alt=""><div class="followup-text">다른 추천 상품도 합성하기</div>';
+  fu.innerHTML = '<div class="followup-icon"><img src="/assets/arrow-reply.svg" alt="reply"></div><img class="followup-badge-icon" src="/assets/sparkles-house-filled.svg" alt=""><div class="followup-text">추천된 다른 상품도 합성해보기</div>';
   fu.onclick = () => openProductSheet();
   chatBody.appendChild(fu);
+
+  appendDivider();
+
+  const fu2 = document.createElement('div');
+  fu2.className = 'followup';
+  fu2.innerHTML = '<div class="followup-icon"><img src="/assets/arrow-reply.svg" alt="reply"></div><div class="followup-text">오브제 각도 바꿔줘</div>';
+  chatBody.appendChild(fu2);
   // 결과 화면은 자동 스크롤 X — 유저가 직접 스크롤하도록
+}
+
+// === 합성 전/후 비교 카로셀 (transform 기반, 부드러운 스와이프) ===
+function createCompositedCarousel(images) {
+  const carousel = document.createElement('div');
+  carousel.className = 'composited-carousel';
+  const track = document.createElement('div');
+  track.className = 'composited-carousel-track';
+  images.forEach(src => {
+    const slide = document.createElement('div');
+    slide.className = 'composited-carousel-slide';
+    slide.innerHTML = `<img src="${src}" alt="합성 이미지" draggable="false">`;
+    track.appendChild(slide);
+  });
+  carousel.appendChild(track);
+
+  // 페이지네이션 인디케이터
+  const pagination = document.createElement('div');
+  pagination.className = 'composited-carousel-pagination';
+  carousel.appendChild(pagination);
+
+  // 스파클 아이콘 (우측 하단)
+  const sparkle = document.createElement('div');
+  sparkle.className = 'composited-carousel-sparkle';
+  sparkle.innerHTML = '<svg viewBox="0 0 24 24" fill="none"><path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="#00a1ff"/></svg>';
+  carousel.appendChild(sparkle);
+
+  // 디폴트로 마지막 슬라이드(=새 이미지)
+  let currentIdx = images.length - 1;
+  const total = images.length;
+
+  function setIndex(idx, animate) {
+    currentIdx = Math.max(0, Math.min(total - 1, idx));
+    track.classList.toggle('animating', !!animate);
+    track.style.transform = `translateX(${-currentIdx * 100}%)`;
+    pagination.textContent = `${currentIdx + 1}/${total}`;
+  }
+  // 즉시 마지막 슬라이드로 위치 (애니메이션 없이)
+  setIndex(currentIdx, false);
+
+  // Pointer 드래그 (데스크톱+모바일 통합)
+  let isDown = false, startX = 0, startTransform = 0, dragDx = 0, startTime = 0;
+  function getWidth() { return carousel.clientWidth; }
+
+  track.addEventListener('pointerdown', (e) => {
+    isDown = true;
+    dragDx = 0;
+    startX = e.clientX;
+    startTime = Date.now();
+    startTransform = -currentIdx * getWidth();
+    track.classList.remove('animating');
+    track.classList.add('dragging');
+    try { track.setPointerCapture(e.pointerId); } catch(_) {}
+  });
+  track.addEventListener('pointermove', (e) => {
+    if (!isDown) return;
+    dragDx = e.clientX - startX;
+    // 양 끝에서 저항 추가
+    let tx = startTransform + dragDx;
+    const minX = -(total - 1) * getWidth();
+    if (tx > 0) tx = tx * 0.3;
+    else if (tx < minX) tx = minX + (tx - minX) * 0.3;
+    track.style.transform = `translateX(${tx}px)`;
+  });
+  function endDrag(e) {
+    if (!isDown) return;
+    isDown = false;
+    track.classList.remove('dragging');
+    const w = getWidth();
+    const elapsed = Date.now() - startTime;
+    const velocity = Math.abs(dragDx) / Math.max(1, elapsed); // px/ms
+    let nextIdx = currentIdx;
+    // 빠른 플릭 또는 30% 이상 드래그 시 슬라이드 변경
+    if (Math.abs(dragDx) > w * 0.3 || velocity > 0.5) {
+      nextIdx = dragDx < 0 ? currentIdx + 1 : currentIdx - 1;
+    }
+    setIndex(nextIdx, true);
+  }
+  track.addEventListener('pointerup', endDrag);
+  track.addEventListener('pointercancel', endDrag);
+
+  return carousel;
+}
+
+// === 카테고리별 추천 상품 (Figma 1431:5807) ===
+const CATEGORY_RUGS = [
+  { img:'/assets/5eddcf76-9c49-40e0-b149-aa94b551ea37.jpg', brand:'오트밀하우스', name:'올라 포르투갈 코튼 러그 7size', price:'199,000', type:'rug' },
+  { img:'/assets/25674132-b83e-4817-b1c2-70cc1832a5f5.jpg', brand:'까르엠가구', name:'플라레 빈티지 워셔블 스트라이프 침대 미니 러그', price:'199,000', type:'rug' },
+  { img:'/assets/b1644ee5-6a77-49aa-98eb-00c5d454a888.jpg', brand:'까르엠가구', name:'먼지없는 크로캣 레드 스트라이프 패턴 거실카페트 거실 러그', price:'199,000', type:'rug' },
+];
+const CATEGORY_OBJETS = [
+  { img:'/assets/f6f9fde1-3a7d-44f3-b88b-34d93ff2673b.jpg', brand:'오트밀하우스', name:'링베이스 세라믹 꽃병 인테리어 오브제 도자기 화병 - C', price:'199,000', type:'objet' },
+  { img:'/assets/8dcf8860-ce68-4f41-a46a-d51b3cc0eed5.jpg', brand:'까르엠가구', name:'이오난사 모스트레이 공기정화 오브제 선물 SET', price:'199,000', type:'objet' },
+  { img:'/assets/d698992a-9bbf-4f10-8f77-83edf9690fb4.jpg', brand:'까르엠가구', name:'3색마카+꼭꼬핀증정 무타공 인테리어 원형 볼록거울 오브제 포토존 집들이 선물 35cm', price:'199,000', type:'objet' },
+];
+
+function appendCategoryRecommendations() {
+  appendDivider();
+  appendHtml('<div class="chat-section-title">카테고리별 추천 상품</div>');
+  appendHtml('<div class="category-subtitle">1. 러그</div>');
+  chatBody.appendChild(createCategoryProductScroll(CATEGORY_RUGS));
+  appendHtml('<div class="category-subtitle">2. 오브제</div>');
+  chatBody.appendChild(createCategoryProductScroll(CATEGORY_OBJETS));
+}
+
+function createCategoryProductScroll(items) {
+  const wrap = document.createElement('div');
+  wrap.className = 'category-product-scroll';
+  items.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'combined-product';
+    el.innerHTML = `
+      <div class="combined-product-img">
+        <img src="${p.img}" alt="${p.name}">
+        <button class="combined-product-bookmark" onclick="event.stopPropagation();this.classList.toggle('filled')">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M15.5 3C16.8058 3 17.9293 3.298 18.7157 4.084C19.5021 4.871 19.8 5.994 19.8 7.3V19.694C19.8 20.242 19.5446 20.743 19.1101 21.039C18.666 21.342 18.0876 21.392 17.5632 21.133L12 18.034L6.472 21.114C5.912 21.392 5.334 21.342 4.89 21.039C4.455 20.743 4.2 20.242 4.2 19.694V7.3C4.2 5.994 4.498 4.871 5.284 4.084C6.071 3.298 7.194 3 8.5 3H15.5Z" fill="white" stroke="white" stroke-width="0.5"/></svg>
+        </button>
+      </div>
+      <button class="combined-product-place">배치하기</button>
+      <div class="combined-product-name"><b>${p.brand}</b> ${p.name}</div>
+      <div class="combined-product-price">${p.price}</div>`;
+    el.querySelector('.combined-product-place').onclick = () => openPlacement(p);
+    wrap.appendChild(el);
+  });
+  return wrap;
 }
 </script>
 </body>
