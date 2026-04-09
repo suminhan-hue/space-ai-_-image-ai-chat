@@ -1,0 +1,2201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>오늘의집 AI Prototype</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --fg:#2f3438;--fgWeak:#8c8c8c;--bgWeak:#f5f5f5;--border:#e0e0e0;
+  --divider:#ededed;--brand:#00a1ff;--brandLight:#f0f8fc;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
+  background:#fff;margin:0;letter-spacing:-0.3px;color:var(--fg);
+  -webkit-font-smoothing:antialiased;
+  width:100vw;height:100vh;height:100dvh;overscroll-behavior:none}
+.phone{width:100%;height:100%;background:#fff;
+  overflow:hidden;position:relative}
+/* 데스크톱에서는 375px 폰 프레임으로 미리보기 */
+@media (min-width:768px){
+  html,body{overflow:hidden}
+  body{background:#e8e8e8;display:flex;justify-content:center;align-items:center;
+    width:100vw;height:100vh}
+  .phone{width:375px;height:812px;border-radius:40px;
+    box-shadow:0 20px 60px rgba(0,0,0,.25),0 0 0 1px rgba(0,0,0,.1)}
+}
+/* Home indicator */
+.home-indicator{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
+  width:134px;height:5px;background:#000;border-radius:100px;z-index:1000}
+
+/* Status bar */
+.status-bar{height:50px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;position:relative;z-index:10;flex-shrink:0}
+.status-bar.dark{color:#fff}
+.status-time{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;
+  font-size:14px;font-weight:600}
+.status-icons{display:flex;align-items:center;gap:5px}
+.status-icons svg{width:16px;height:12px}
+
+/* Top nav */
+.top-nav{height:44px;display:flex;align-items:center;padding:0 16px;
+  position:relative;flex-shrink:0}
+.top-nav-title{position:absolute;left:50%;transform:translateX(-50%);
+  font-size:16px;font-weight:700;color:var(--fg)}
+.top-nav-left,.top-nav-right{display:flex;align-items:center;z-index:1}
+.top-nav-right{margin-left:auto;gap:14px}
+.top-nav button,.nav-btn{background:none;border:none;cursor:pointer;padding:0;
+  display:flex;align-items:center;justify-content:center;color:#141414}
+
+/* Screens */
+.screen{position:absolute;top:0;left:0;width:100%;height:100%;
+  display:flex;flex-direction:column;opacity:0;pointer-events:none;
+  transition:transform .3s ease,opacity .3s ease;will-change:transform,opacity}
+.screen.active{opacity:1;pointer-events:auto;transform:translateX(0)!important;z-index:2}
+.screen.slide-left{transform:translateX(-100%)}
+.screen.slide-right{transform:translateX(100%)}
+.screen.slide-up{transform:translateY(-100%)}
+.screen.slide-down{transform:translateY(100%)}
+
+/* ===== Screen 1: Entry ===== */
+#screen-entry{background:#fff}
+.entry-body{flex:1;position:relative;overflow:hidden}
+.entry-greeting{position:absolute;top:24px;left:16px;font-size:20px;
+  font-weight:500;line-height:28px;color:#141414;white-space:pre-line}
+.entry-chips{position:absolute;top:96px;left:16px;display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.entry-chip-camera{background:var(--brandLight);border-radius:99px;height:40px;
+  padding:10px 16px 10px 12px;display:inline-flex;align-items:center;gap:4px;
+  border:none;cursor:pointer;font-family:inherit;font-size:15px;
+  color:#141414;letter-spacing:-0.3px;transition:opacity .15s;width:auto}
+.entry-chip-camera:hover{opacity:.8}
+.entry-chip-group{display:flex;flex-wrap:wrap;gap:8px}
+.entry-chip{background:var(--brandLight);border-radius:99px;height:40px;
+  padding:10px 12px 10px 16px;display:inline-flex;align-items:center;gap:6px;
+  border:none;cursor:pointer;font-family:inherit;font-size:15px;
+  color:#141414;letter-spacing:-0.3px;transition:opacity .15s}
+.entry-chip:hover{opacity:.8}
+.entry-chip .chevron{color:var(--fgWeak);flex-shrink:0}
+/* 하단 고정 입력창 - 제거, keyboard-area 안에 통합 */
+.entry-plus{width:44px;height:44px;background:var(--bgWeak);border-radius:99px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  border:none;cursor:pointer;color:#141414}
+.entry-input-field{flex:1;height:44px;background:var(--bgWeak);border-radius:99px;
+  position:relative;display:flex;align-items:center;padding:0 16px}
+.entry-input{background:none;border:none;outline:none;font-family:inherit;
+  font-size:15px;width:100%;color:var(--fg);letter-spacing:-0.3px}
+.entry-input::placeholder{color:var(--fgWeak)}
+.entry-cursor{width:1px;height:22px;background:var(--brand);flex-shrink:0;margin-right:4px;display:none}
+.entry-input:focus ~ .entry-cursor,.entry-input-field:focus-within .entry-cursor{display:block}
+/* entry-room hidden by default */
+.entry-room{display:none}
+
+/* 입력창+키보드 통합 블록 */
+.entry-input-kb{position:absolute;bottom:34px;left:0;right:0;z-index:20;
+  display:flex;flex-direction:column;background:#fff}
+.entry-input-kb .entry-input-row{display:flex;align-items:center;gap:4px;
+  padding:8px 16px;background:#fff}
+.entry-keyboard{background:#d1d5db;padding:0 3px 0;
+  max-height:0;overflow:hidden;transition:max-height .25s ease,padding .25s ease}
+.entry-input-kb.kb-open .entry-keyboard{max-height:300px;padding:6px 3px 0}
+.entry-keyboard::after{content:'';display:block;height:28px;background:#d1d5db}
+.kb-row{display:flex;justify-content:center;gap:5px;margin-bottom:6px}
+.kb-key{background:#fff;border-radius:5px;height:42px;display:flex;
+  align-items:center;justify-content:center;font-size:17px;color:#333;
+  box-shadow:0 1px 0 1px rgba(0,0,0,.15);font-family:inherit;flex:1;max-width:34px}
+.kb-key.wide{max-width:44px;background:#abb0b8;font-size:16px}
+.kb-key.space{max-width:none;flex:4;font-size:14px}
+.kb-key.action{max-width:none;flex:1.2;background:#abb0b8;font-size:14px}
+.kb-bottom{display:flex;justify-content:space-between;align-items:center;
+  padding:6px 8px 20px}
+
+/* ===== Screen 2: Chat ===== */
+#screen-chat{background:#fff}
+.chat-body{flex:1;overflow-y:auto;padding:12px 16px 8px;
+  scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+.chat-body::-webkit-scrollbar{display:none}
+
+/* User bubble */
+.msg-user{display:flex;justify-content:flex-end;margin-bottom:16px}
+.msg-user-bubble{background:var(--bgWeak);border-radius:99px;padding:8px 14px;
+  font-size:14px;max-width:280px;line-height:20px}
+
+/* AI message */
+.msg-ai{margin-bottom:16px}
+.msg-ai-icon{width:28px;height:28px;display:flex;align-items:center;
+  justify-content:center;margin-bottom:6px}
+.msg-ai-icon img{width:20px;height:20px}
+.msg-ai-text{font-size:15px;line-height:24px;overflow:visible;color:var(--fg);word-break:break-word}
+.msg-ai-text h1{font-size:20px;line-height:28px;font-weight:600;margin:0 0 12px}
+.msg-ai-text h2{font-size:17px;line-height:22px;font-weight:600;margin:0 0 8px}
+.msg-ai-text p{font-size:15px;line-height:24px;margin:0 0 12px}
+.msg-ai-text strong{font-weight:600}
+.msg-ai-text ol,.msg-ai-text ul{font-size:15px;line-height:24px;margin:0 0 12px}
+.msg-ai-text ol{list-style-type:decimal;padding-left:20px}
+.msg-ai-text ul{list-style-type:disc;padding-left:20px}
+.msg-ai-text hr{margin:20px 0;border:none;border-top:0.5px solid #ededed}
+.msg-ai-text .product-scroll{margin:8px 0 8px -16px;padding-left:16px;padding-right:16px;
+  width:calc(100% + 32px)}
+.msg-ai-text b,.msg-ai-text strong{font-weight:600}
+
+.msg-room-photo{display:flex;justify-content:flex-end;margin-bottom:8px}
+.msg-room-photo img{width:120px;height:160px;border-radius:8px;object-fit:cover}
+
+/* User-side selected product thumbnails (조합 상품 변경 후) */
+.msg-user-products{display:flex;justify-content:flex-end;gap:6px;margin-bottom:16px}
+.msg-user-product-thumb{width:64px;height:64px;border-radius:4px;overflow:hidden;
+  background:#f5f5f5}
+.msg-user-product-thumb img{width:100%;height:100%;object-fit:cover}
+
+.chat-divider{height:1px;background:var(--divider);margin:16px 0}
+
+.chat-section-title{font-size:20px;font-weight:600;line-height:28px;
+  margin-bottom:12px;white-space:pre-line}
+.chat-item-title{font-size:17px;font-weight:600;margin-bottom:8px}
+.chat-item-body{font-size:14px;line-height:20px;white-space:pre-wrap;margin-bottom:12px}
+
+/* Product cards */
+.product-scroll{display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;
+  margin:0 -16px;padding-left:16px;padding-right:16px;
+  -webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+.product-scroll::-webkit-scrollbar{display:none}
+.product-card{flex-shrink:0;width:140px;cursor:default}
+.product-card-img{width:140px;height:140px;border-radius:5px;overflow:hidden;
+  position:relative;border:1px solid rgba(0,0,0,.05)}
+.product-card-img img{width:100%;height:100%;object-fit:cover}
+.product-card-bookmark{position:absolute;bottom:8px;right:8px;width:24px;height:24px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:transform .15s;
+  filter:drop-shadow(0 4px 10px rgba(0,0,0,0.12))}
+.product-card-bookmark:hover{transform:scale(1.1)}
+.product-card-bookmark svg path{fill:white;fill-rule:evenodd;clip-rule:evenodd}
+.product-card-bookmark.filled svg path{fill:var(--brand)}
+.product-card-place{width:139px;height:28px;border:1px solid var(--border);
+  border-radius:4px;display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:500;margin-top:6px;cursor:pointer;
+  background:#fff;font-family:inherit;letter-spacing:-0.3px;
+  transition:border-color .15s,color .15s}
+.product-card-place:hover{border-color:var(--brand);color:var(--brand)}
+.product-card-brand{font-size:12px;font-weight:600;margin-top:4px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.product-card-name{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.product-card-price{font-size:12px;font-weight:600;margin-top:2px}
+.product-card-dims{font-size:12px;color:var(--fgWeak)}
+
+/* Follow-up suggestions */
+.followup-badge-icon{width:18px;height:18px;flex-shrink:0;margin-right:2px}
+.followup{display:flex;align-items:center;gap:6px;padding:8px 0;cursor:pointer;
+  transition:opacity .15s}
+.followup:hover{opacity:.7}
+.followup-icon{flex-shrink:0;width:20px;height:20px;transform:rotate(180deg)}
+.followup-icon img{width:100%;height:100%}
+.followup-text{font-size:14px;font-weight:500;line-height:20px}
+
+/* Chat fixed bottom */
+.chat-bottom{flex-shrink:0;padding:6px 16px;padding-bottom:38px;background:#fff;
+  display:flex;align-items:center;gap:4px;
+  position:relative}
+.chat-plus{width:44px;height:44px;background:var(--bgWeak);border-radius:99px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  border:none;cursor:pointer;color:#141414}
+/* Chat input with image - expanded input field */
+.chat-bottom.has-photo{align-items:flex-end}
+.chat-bottom.has-photo .chat-input-wrap{height:134px;border-radius:20px;
+  flex-direction:column;padding:10px;gap:6px;align-items:flex-start;position:relative}
+.chat-bottom.has-photo .chat-input{padding:0 40px 0 6px;height:24px;font-size:15px;flex:none;width:100%}
+.chat-bottom.has-photo .chat-send{position:absolute;right:10px;bottom:10px;top:auto;transform:none}
+.chat-input-thumb-wrap{display:none;padding:0 0 6px}
+.chat-bottom.has-photo .chat-input-thumb-wrap{display:block}
+.chat-input-thumb{width:80px;height:80px;border-radius:12px;overflow:hidden;position:relative}
+.chat-input-thumb img{width:100%;height:100%;object-fit:cover}
+.chat-input-thumb:not(.loaded)::after{content:'';position:absolute;inset:0;
+  background:rgba(0,0,0,0.3);border-radius:12px}
+.chat-input-thumb .msg-upload-loader{z-index:2}
+.chat-input-thumb.loaded .msg-upload-loader{display:none}
+.chat-input-thumb.loaded::after{display:none}
+
+.chat-input-wrap{flex:1;height:44px;background:var(--bgWeak);border-radius:99px;
+  display:flex;align-items:center;padding:0 6px 0 16px;position:relative}
+.chat-input{background:none;border:none;outline:none;font-family:inherit;
+  font-size:15px;flex:1;color:var(--fg);letter-spacing:-0.3px}
+.chat-input::placeholder{color:var(--fgWeak)}
+.chat-send{width:32px;height:32px;border-radius:50%;background:#141414;
+  border:none;cursor:pointer;display:none;align-items:center;justify-content:center;
+  flex-shrink:0;transition:opacity .15s}
+.chat-send:hover{opacity:.85}
+.chat-send.visible{display:flex}
+.chat-send svg{color:#fff}
+
+/* Scroll down button */
+.scroll-down-btn{position:absolute;top:-44px;left:50%;transform:translateX(-50%);
+  width:32px;height:32px;border-radius:50%;background:#fff;
+  border:1px solid var(--border);display:none;align-items:center;
+  justify-content:center;cursor:pointer;
+  box-shadow:0 2px 8px rgba(0,0,0,.1);transition:opacity .2s}
+.scroll-down-btn.visible{display:flex}
+
+/* Shimmer loading text */
+.shimmer-text{
+  background: linear-gradient(90deg, #c8c8c8 0%, #2f3438 50%, #c8c8c8 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 1.6s linear infinite;
+  font-size: 15px;
+  line-height: 24px;
+}
+@keyframes shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* Typing indicator */
+.typing-indicator{display:flex;gap:4px;padding:8px 0}
+.typing-dot{width:6px;height:6px;border-radius:50%;background:#aaa;
+  animation:typingBounce .6s ease-in-out infinite}
+.typing-dot:nth-child(2){animation-delay:.15s}
+.typing-dot:nth-child(3){animation-delay:.3s}
+@keyframes typingBounce{
+  0%,100%{opacity:.4;transform:translateY(0)}
+  50%{opacity:1;transform:translateY(-4px)}
+}
+
+/* ===== Screen 3: 3D View ===== */
+#screen-3d{background:#1b1b1b}
+.three-d-top{height:50px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;flex-shrink:0}
+.three-d-top button{background:none;border:none;cursor:pointer;color:#fff;padding:0}
+.three-d-scene{flex:1;position:relative;overflow:hidden;display:flex;
+  align-items:center;justify-content:center}
+.three-d-scene img{width:100%;height:100%;object-fit:cover}
+.three-d-pill{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+  background:var(--brandLight);border-radius:99px;padding:8px 16px;
+  display:flex;align-items:center;gap:6px;cursor:pointer;
+  font-size:14px;font-weight:500;color:var(--fg);white-space:nowrap;
+  transition:opacity .15s}
+.three-d-pill:hover{opacity:.85}
+.three-d-pill img{width:18px;height:18px}
+
+/* 3D Bottom sheet */
+.three-d-sheet{background:#fff;border-radius:16px 16px 0 0;flex-shrink:0;
+  padding-bottom:34px;max-height:340px;display:flex;flex-direction:column}
+.sheet-grabber{width:38px;height:3px;background:#eaedef;border-radius:99px;
+  margin:10px auto 8px}
+.sheet-tabs{display:flex;border-bottom:1px solid var(--divider);padding:0 16px}
+.sheet-tab{padding:10px 12px;font-size:14px;font-weight:500;color:var(--fgWeak);
+  border:none;background:none;cursor:pointer;font-family:inherit;
+  position:relative;letter-spacing:-0.3px;transition:color .15s}
+.sheet-tab.active{color:var(--fg);font-weight:600}
+.sheet-tab.active::after{content:'';position:absolute;bottom:-1px;left:12px;right:12px;
+  height:2px;background:var(--fg);border-radius:1px}
+.sheet-subtabs{display:flex;gap:4px;padding:10px 16px;overflow-x:auto;flex-shrink:0}
+.sheet-subtabs::-webkit-scrollbar{display:none}
+.sheet-subtab{padding:6px 12px;border-radius:99px;font-size:13px;
+  border:1px solid var(--border);background:#fff;cursor:pointer;
+  font-family:inherit;white-space:nowrap;letter-spacing:-0.3px;transition:all .15s}
+.sheet-subtab.active{background:var(--fg);color:#fff;border-color:var(--fg)}
+.sheet-product-list{flex:1;overflow-y:auto;padding:8px 16px}
+.sheet-product-list::-webkit-scrollbar{display:none}
+.sheet-product-item{display:flex;gap:10px;padding:8px 0;align-items:center}
+.sheet-product-thumb{width:52px;height:52px;border-radius:6px;overflow:hidden;
+  flex-shrink:0;border:1px solid rgba(0,0,0,.05)}
+.sheet-product-thumb img{width:100%;height:100%;object-fit:cover}
+.sheet-product-info{flex:1;min-width:0}
+.sheet-product-name{font-size:13px;font-weight:500;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.sheet-product-price{font-size:13px;font-weight:600;margin-top:2px}
+.sheet-product-dims{font-size:12px;color:var(--fgWeak)}
+
+.sheet-tab-content{display:none}
+.sheet-tab-content.active{display:block}
+.idea-content{padding:0;background:#fff}
+.idea-card{margin:0 16px 24px;border-radius:16px;overflow:hidden;
+  position:relative;width:343px;height:206px;background:#d5d5d5}
+.idea-card-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.idea-card-bottom{position:absolute;left:0;right:0;bottom:0;
+  display:flex;align-items:center;gap:12px;padding:12px 16px 16px}
+.idea-card-bottom.purple{background:#2e287b}
+.idea-card-bottom.brown{background:#a17040}
+.idea-card-text{flex:1;min-width:0}
+.idea-card-title{font-size:16px;font-weight:700;color:#fff;
+  letter-spacing:-0.3px;line-height:20px}
+.idea-card-desc{font-size:14px;font-weight:500;color:rgba(255,255,255,0.8);
+  letter-spacing:-0.3px;line-height:20px;margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.idea-card-btn{background:#fff;border:none;border-radius:4px;
+  padding:4px 8px;font-size:14px;font-weight:500;color:#141414;
+  cursor:pointer;font-family:inherit;letter-spacing:-0.3px;flex-shrink:0}
+
+.idea-divider{height:12px;background:#f5f5f5;width:100%}
+
+.idea-others{padding-bottom:64px}
+.idea-others-title{padding:20px 16px 16px;font-size:17px;font-weight:600;
+  color:#141414;line-height:22px;letter-spacing:-0.3px}
+.idea-search{margin:0 16px;background:#f5f5f5;border-radius:9999px;
+  height:38px;display:flex;align-items:center;gap:6px;padding:0 11px}
+.idea-search-icon{flex-shrink:0;color:#8c8c8c}
+.idea-search-input{font-size:14px;color:#8c8c8c;letter-spacing:-0.3px}
+.idea-chips{display:flex;gap:4px;padding:12px 16px 16px;overflow-x:auto;
+  border-bottom:1px solid #e0e0e0}
+.idea-chips::-webkit-scrollbar{display:none}
+.idea-chip{flex-shrink:0;background:#fff;border:1px solid #e0e0e0;
+  border-radius:9999px;height:32px;padding:0 12px;font-size:14px;
+  color:#141414;display:flex;align-items:center;gap:4px;
+  font-family:inherit;letter-spacing:-0.3px;cursor:pointer}
+.idea-chip svg{width:12px;height:12px}
+
+.idea-feed{padding:0 16px}
+.idea-row{padding:16px 0}
+.idea-row-header{display:flex;gap:8px;align-items:center;padding-bottom:8px;
+  font-size:14px;line-height:20px;letter-spacing:-0.3px}
+.idea-row-name{font-weight:600;color:#141414}
+.idea-row-time{color:#8c8c8c}
+.idea-row-img{width:343px;height:300px;background:#e0e0e0;border-radius:0;
+  overflow:hidden}
+.idea-row-img img{width:100%;height:100%;object-fit:cover}
+.idea-row-buttons{display:flex;justify-content:space-between;
+  padding:12px 0 8px}
+.idea-row-buttons-left{display:flex;gap:16px}
+.idea-row-btn{display:flex;align-items:center;gap:2px;font-size:14px;
+  font-weight:600;color:#141414;letter-spacing:-0.3px}
+.idea-row-btn svg{width:24px;height:24px}
+.idea-row-title{font-size:15px;font-weight:700;color:#141414;
+  line-height:24px;letter-spacing:-0.3px;margin-top:2px}
+.idea-row-desc{font-size:14px;font-weight:500;color:#8c8c8c;
+  line-height:20px;letter-spacing:-0.3px;margin-top:2px}
+
+/* ===== Screen 4: Placement (배치화면, Figma 1384:23321) ===== */
+#screen-placement{background:#1b1b1d;display:flex !important;flex-direction:column;
+  position:absolute;top:0;left:0;width:100%;height:100%}
+#screen-placement.active{z-index:1100}
+#screen-placement:not(.active){opacity:0;pointer-events:none}
+/* Solid dark background with subtle CSS grid pattern */
+#screen-placement::before{content:'';position:absolute;inset:0;
+  background-color:#1b1b1d;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size:30px 30px;
+  z-index:0}
+/* 3D room with edit controls (Figma 1395:10422 - 406x321 centered) */
+#screen-placement .placement-room-image{position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);width:406px;height:auto;max-width:100%;
+  z-index:1;pointer-events:none;object-fit:contain}
+/* Top nav with X close */
+#screen-placement .placement-top-nav{position:absolute;top:50px;left:0;right:0;
+  height:44px;display:flex;align-items:center;justify-content:flex-end;
+  padding:0 16px;z-index:10}
+#screen-placement .placement-close-btn{background:none;border:none;cursor:pointer;
+  width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+  padding:0}
+/* Bottom CTA bar */
+#screen-placement .placement-cta-bar{position:absolute;left:0;right:0;
+  bottom:34px;background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  display:flex;align-items:center;gap:16px;padding:12px 16px;z-index:10}
+#screen-placement .placement-cta-info-wrap{display:flex;gap:8px;flex:1;min-width:0;
+  align-items:center}
+#screen-placement .placement-cta-thumb{width:42px;height:42px;border-radius:8px;
+  overflow:hidden;flex-shrink:0;background:#fff}
+#screen-placement .placement-cta-thumb img{width:100%;height:100%;object-fit:cover}
+#screen-placement .placement-cta-text{flex:1;min-width:0;display:flex;
+  flex-direction:column}
+#screen-placement .placement-cta-name{font-size:14px;line-height:18px;color:#fff;
+  letter-spacing:-0.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-weight:600}
+#screen-placement .placement-cta-price{display:flex;align-items:center;gap:2px;
+  font-size:16px;font-weight:600;color:#fff;line-height:24px;letter-spacing:-0.3px}
+#screen-placement .placement-cta-btn{flex-shrink:0;height:44px;padding:0 16px;
+  background:#00a1ff;color:#fff;border:none;border-radius:8px;font-size:15px;
+  font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:-0.3px;
+  white-space:nowrap;transition:opacity .15s}
+#screen-placement .placement-cta-btn:hover{opacity:.9}
+/* Home indicator */
+#screen-placement .placement-home-indicator{position:absolute;bottom:0;left:0;right:0;
+  height:34px;display:flex;align-items:flex-end;justify-content:center;
+  padding-bottom:8px;z-index:11;pointer-events:none}
+#screen-placement .placement-home-indicator div{width:134px;height:5px;
+  background:#fff;border-radius:100px}
+
+/* ===== Plus Bottom Sheet ===== */
+.plus-sheet-overlay{position:absolute;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,.4);z-index:800;opacity:0;pointer-events:none;
+  transition:opacity .3s ease}
+.plus-sheet-overlay.active{opacity:1;pointer-events:auto}
+.plus-sheet{position:absolute;bottom:0;left:0;right:0;z-index:810;
+  background:#fff;border-radius:16px 16px 0 0;
+  transform:translateY(100%);transition:transform .3s ease}
+.plus-sheet.active{transform:translateY(0)}
+.plus-sheet-handle{display:flex;justify-content:center;padding:10px 0 8px}
+.plus-sheet-handle div{width:32px;height:4px;background:#eaedef;border-radius:6px}
+.plus-sheet-header{display:flex;justify-content:flex-end;padding:0 16px 4px}
+.plus-sheet-header a{font-size:14px;font-weight:500;color:var(--brand);
+  text-decoration:none;cursor:pointer}
+.plus-sheet-photos{display:flex;gap:6px;padding:12px 16px 20px;overflow-x:auto}
+.plus-sheet-photos::-webkit-scrollbar{display:none}
+.plus-sheet-photo{width:88px;height:88px;border-radius:8px;overflow:hidden;
+  flex-shrink:0;background:#f5f5f5}
+.plus-sheet-photo img{width:100%;height:100%;object-fit:cover}
+.plus-sheet-camera{display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:2px;cursor:pointer;background:var(--divider)}
+.plus-sheet-camera-icon{width:32px;height:32px}
+.plus-sheet-camera-text{font-size:13px;font-weight:500;color:var(--fg)}
+.plus-sheet-divider{height:1px;background:var(--divider);margin:0 16px}
+.plus-sheet-action{display:flex;align-items:center;gap:10px;padding:20px 16px}
+.plus-sheet-action-icon{width:24px;height:24px;flex-shrink:0;display:flex;
+  align-items:center;justify-content:center}
+.plus-sheet-action-text{display:flex;flex-direction:column}
+.plus-sheet-action-title{font-size:15px;font-weight:600;line-height:24px}
+.plus-sheet-action-desc{font-size:14px;color:var(--fgWeak);line-height:18px}
+.plus-sheet-safe{height:34px;background:#fff}
+
+/* ===== Screen 5: Drawer ===== */
+.drawer-overlay{position:absolute;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,.4);z-index:900;opacity:0;pointer-events:none;
+  transition:opacity .3s ease}
+.drawer-overlay.active{opacity:1;pointer-events:auto}
+.drawer{position:absolute;top:0;right:0;width:305px;height:100%;
+  background:#fff;z-index:910;transform:translateX(100%);
+  transition:transform .3s ease;display:flex;flex-direction:column;
+  border-radius:0;padding-top:50px}
+.drawer.active{transform:translateX(0)}
+.drawer-header{padding:16px;display:flex;align-items:center;justify-content:space-between}
+.drawer-new-chat{display:flex;align-items:center;gap:6px;
+  font-size:15px;font-weight:500;cursor:pointer;background:none;
+  border:none;font-family:inherit;color:var(--fg);letter-spacing:-0.3px}
+.drawer-close{background:none;border:none;cursor:pointer;color:#141414;padding:0}
+.drawer-divider{height:1px;background:var(--divider);margin:0 16px}
+.drawer-section-title{padding:12px 16px 8px;font-size:13px;font-weight:600;color:var(--fgWeak)}
+.drawer-items{flex:1;overflow-y:auto;padding:0 16px}
+.drawer-item{padding:10px 0;font-size:14px;cursor:pointer;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  transition:color .15s}
+.drawer-item:hover{color:var(--brand)}
+
+/* Camera Screen */
+#screen-camera{background:#000;z-index:950}
+.camera-view{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.camera-view img{width:100%;height:100%;object-fit:cover}
+.camera-top{position:absolute;top:50px;left:0;right:0;display:flex;justify-content:space-between;padding:0 16px;z-index:2}
+.camera-top button{background:none;border:none;cursor:pointer;color:#fff;padding:8px}
+.camera-bottom-text{position:absolute;bottom:140px;left:0;right:0;text-align:center;color:#fff;font-size:15px;line-height:22px}
+.camera-bottom{position:absolute;bottom:34px;left:0;right:0;display:flex;align-items:center;justify-content:center;padding:20px 0}
+.camera-shutter{width:64px;height:64px;border-radius:50%;border:4px solid #fff;background:rgba(255,255,255,0.3);cursor:pointer;transition:transform .1s}
+.camera-shutter:active{transform:scale(0.9)}
+.camera-gallery{position:absolute;left:20px;bottom:40px;width:40px;height:40px;border-radius:8px;overflow:hidden;border:2px solid #fff}
+.camera-gallery img{width:100%;height:100%;object-fit:cover}
+
+/* ===== NEW Entry (아이디어 탭) ===== */
+#screen-entry{background:#fff}
+.entry-top-bar{background:#000;height:50px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 21px 0 14px;flex-shrink:0}
+.entry-top-bar .status-time{color:#fff;font-size:14px;font-weight:600;
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif}
+.entry-top-bar .status-icons{display:flex;gap:5px;color:#fff}
+.entry-top-bar .status-icons svg{width:16px;height:12px}
+.entry-icon-bar{background:#000;height:60px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 16px;flex-shrink:0}
+.entry-icon-bar-back{background:none;border:none;cursor:pointer;color:#fff;padding:0;
+  display:flex;align-items:center;justify-content:center;width:24px;height:24px}
+.entry-icon-bar-right{display:flex;gap:4px}
+.entry-icon-btn{display:flex;flex-direction:column;align-items:center;gap:2px;
+  width:40px;background:none;border:none;cursor:pointer;padding:0}
+.entry-icon-btn svg{width:24px;height:24px;color:#fff}
+.entry-icon-btn span{font-size:12px;color:#fff;letter-spacing:-0.3px;line-height:16px;
+  font-weight:500}
+.entry-tabs-wrap{padding:8px 12px;background:#fff;flex-shrink:0}
+.entry-tabs{background:#f5f5f5;border-radius:99px;height:44px;display:flex;
+  gap:4px;padding:4px;align-items:center}
+.entry-tab{flex:1;height:36px;display:flex;align-items:center;justify-content:center;
+  border-radius:99px;font-size:15px;font-weight:500;color:#141414;
+  background:none;border:none;cursor:pointer;font-family:inherit;letter-spacing:-0.3px}
+.entry-tab.active{background:#fff;border:1px solid #e0e0e0;font-weight:600;
+  box-shadow:0 2px 5px rgba(63,71,77,0.05)}
+.entry-content{flex:1;overflow-y:auto;background:#fff;padding-top:20px}
+.entry-content::-webkit-scrollbar{display:none}
+.entry-section{padding:0 16px 24px}
+.entry-card{position:relative;width:343px;height:206px;border-radius:16px;
+  overflow:hidden;cursor:pointer;background:#d5d5d5}
+.entry-card-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.entry-card-bottom{position:absolute;left:0;right:0;bottom:0;
+  display:flex;align-items:center;gap:12px;padding:12px 16px 16px}
+.entry-card-bottom.purple{background:#2e287b}
+.entry-card-bottom.brown{background:#a17040}
+.entry-card-text{flex:1;min-width:0}
+.entry-card-title{font-size:16px;font-weight:700;color:#fff;line-height:20px;
+  letter-spacing:-0.3px}
+.entry-card-desc{font-size:14px;font-weight:500;color:rgba(255,255,255,0.8);
+  line-height:20px;letter-spacing:-0.3px;margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.entry-card-btn{background:#fff;border:none;border-radius:4px;
+  padding:4px 8px;font-size:14px;font-weight:500;color:#141414;
+  cursor:pointer;font-family:inherit;letter-spacing:-0.3px;flex-shrink:0;line-height:20px}
+.entry-card-tag{position:absolute;width:24px;height:24px;border-radius:50%;
+  background:#00a1ff;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 4px rgba(0,0,0,0.2)}
+.entry-card-tag svg{width:14px;height:14px;color:#fff}
+
+.entry-others{padding-bottom:64px}
+.entry-others-title{padding:20px 16px 16px;font-size:17px;font-weight:600;
+  color:#141414;line-height:22px;letter-spacing:-0.3px}
+.entry-search{margin:0 16px;background:#f5f5f5;border-radius:9999px;
+  height:38px;display:flex;align-items:center;gap:6px;padding:0 11px}
+.entry-search svg{flex-shrink:0;color:#8c8c8c}
+.entry-search span{font-size:14px;color:#8c8c8c;letter-spacing:-0.3px}
+.entry-filter-chips{display:flex;gap:4px;padding:12px 16px 16px;overflow-x:auto;
+  border-bottom:1px solid #e0e0e0}
+.entry-filter-chips::-webkit-scrollbar{display:none}
+.entry-filter-chip{flex-shrink:0;background:#fff;border:1px solid #e0e0e0;
+  border-radius:9999px;height:32px;padding:0 12px;font-size:14px;
+  color:#141414;display:flex;align-items:center;gap:4px;
+  font-family:inherit;letter-spacing:-0.3px;cursor:pointer}
+.entry-filter-chip svg{width:12px;height:12px}
+.entry-feed{padding:0 16px}
+.entry-feed-row{padding:16px 0}
+.entry-feed-header{display:flex;gap:8px;align-items:center;padding-bottom:8px;
+  font-size:14px;line-height:20px;letter-spacing:-0.3px}
+.entry-feed-name{font-weight:600;color:#141414}
+.entry-feed-time{color:#8c8c8c}
+.entry-feed-img{width:343px;height:300px;background:#e0e0e0;overflow:hidden}
+.entry-feed-img img{width:100%;height:100%;object-fit:cover}
+.entry-feed-buttons{display:flex;gap:16px;padding:12px 0 8px}
+.entry-feed-btn{display:flex;align-items:center;gap:2px;font-size:14px;
+  font-weight:600;color:#141414;letter-spacing:-0.3px}
+.entry-feed-btn svg{width:24px;height:24px}
+.entry-feed-title{font-size:15px;font-weight:700;color:#141414;
+  line-height:24px;letter-spacing:-0.3px;margin-top:2px}
+.entry-feed-desc{font-size:14px;font-weight:500;color:#8c8c8c;
+  line-height:20px;letter-spacing:-0.3px;margin-top:2px}
+
+/* ===== Composited image card in chat (Figma 1431:5840 정확한 사양) ===== */
+.composited-img{width:343px;height:458px;margin:0 0 20px;
+  border-radius:8px;overflow:hidden;position:relative}
+.composited-img img{position:absolute;height:105.99%;left:-4.89%;top:-3.37%;
+  width:108.16%;max-width:none;object-fit:cover;display:block}
+/* Swipeable comparison carousel (Figma 1431:5593) */
+.composited-carousel-wrap{margin:0 0 20px}
+/* Progress bar 상단 (Figma 1439:13633) */
+.composited-progress{display:flex;gap:6px;align-items:center;padding:8px 0;width:100%}
+.composited-progress-segment{flex:1 1 0;height:3px;border-radius:1px;
+  background:#dcdcdc;transition:background .25s ease}
+.composited-progress-segment.active{background:#141414}
+.composited-carousel{position:relative;width:343px;height:458px;
+  overflow:hidden;
+  user-select:none;-webkit-user-select:none;touch-action:pan-y}
+.composited-carousel-track{display:flex;gap:6px;width:100%;height:100%;
+  will-change:transform;cursor:grab}
+.composited-carousel-track.dragging{cursor:grabbing}
+.composited-carousel-track.animating{transition:transform .35s cubic-bezier(0.22,0.61,0.36,1)}
+.composited-carousel-slide{flex-shrink:0;width:100%;height:100%;
+  position:relative;overflow:hidden;border-radius:8px}
+.composited-carousel-slide img{position:absolute;height:105.99%;left:-4.89%;top:-3.37%;
+  width:108.16%;max-width:none;object-fit:cover;display:block;pointer-events:none}
+.composited-carousel-pagination{position:absolute;bottom:12px;left:50%;
+  transform:translateX(-50%);background:rgba(0,0,0,0.4);color:#fff;
+  font-size:12px;line-height:16px;padding:4px 8px;border-radius:30px;
+  font-weight:500;pointer-events:none;letter-spacing:-0.3px;z-index:2}
+.composited-carousel-sparkle{position:absolute;bottom:12px;right:12px;
+  width:18px;height:18px;pointer-events:none}
+.composited-carousel-sparkle svg{width:100%;height:100%}
+.combined-products-title{font-size:20px;font-weight:600;line-height:28px;
+  letter-spacing:-0.3px;margin-bottom:12px;color:#2f3438}
+.combined-products{display:flex;gap:6px;margin-bottom:20px}
+/* 카테고리별 추천 상품 */
+.category-subtitle{font-size:17px;font-weight:600;line-height:22px;
+  letter-spacing:-0.3px;color:#2f3438;margin:0 0 12px 0;padding:0}
+.category-product-scroll{display:flex;gap:6px;overflow-x:auto;padding:0 16px 20px;
+  margin:0 -16px;-webkit-overflow-scrolling:touch}
+.category-product-scroll::-webkit-scrollbar{display:none}
+.category-product-scroll .combined-product{flex-shrink:0}
+.combined-product{width:140px;display:flex;flex-direction:column;gap:6px}
+.combined-product-img{width:140px;aspect-ratio:1;border-radius:5px;overflow:hidden;
+  border:1px solid rgba(0,0,0,0.05);position:relative}
+.combined-product-img img{width:100%;height:100%;object-fit:cover}
+.combined-product-bookmark{position:absolute;bottom:8px;right:8px;width:24px;height:24px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  filter:drop-shadow(0 4px 10px rgba(0,0,0,0.12));transition:transform .15s;
+  background:none;border:none;padding:0}
+.combined-product-bookmark:hover{transform:scale(1.1)}
+.combined-product-bookmark svg path{fill:white;fill-rule:evenodd;clip-rule:evenodd}
+.combined-product-bookmark.filled svg path{fill:#00a1ff}
+.combined-product-place{height:28px;border:1px solid #e0e0e0;border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:500;cursor:pointer;background:#fff;
+  font-family:inherit;letter-spacing:-0.3px;color:#141414;
+  transition:border-color .15s,color .15s}
+.combined-product-place:hover{border-color:#00a1ff;color:#00a1ff}
+.combined-product-name{font-size:12px;line-height:16px;color:#2f3438;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden}
+.combined-product-name b{font-weight:600}
+.combined-product-price{font-size:12px;font-weight:600;color:#2f3438;line-height:16px}
+
+/* ===== Product Selection Bottom Sheet ===== */
+.psheet-overlay{position:absolute;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,.4);z-index:850;opacity:0;pointer-events:none;
+  transition:opacity .3s ease}
+.psheet-overlay.active{opacity:1;pointer-events:auto}
+.psheet{position:absolute;bottom:0;left:0;right:0;z-index:860;
+  background:#fff;border-radius:16px 16px 0 0;
+  transform:translateY(100%);transition:transform .3s ease;
+  display:flex;flex-direction:column;max-height:90%}
+.psheet.active{transform:translateY(0)}
+.psheet-handle{display:flex;justify-content:center;padding:8px 0;flex-shrink:0}
+.psheet-handle div{width:32px;height:4px;background:#eaedef;border-radius:6px}
+.psheet-header{display:flex;align-items:center;justify-content:center;
+  position:relative;height:44px;flex-shrink:0;padding:0 16px}
+.psheet-title{font-size:16px;font-weight:700;color:#2f3438;line-height:20px;
+  letter-spacing:-0.3px}
+.psheet-close{position:absolute;right:16px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;color:#141414;padding:0;
+  display:flex;align-items:center;justify-content:center}
+.psheet-body{flex:1;overflow-y:auto;padding:0 16px 16px}
+.psheet-body::-webkit-scrollbar{display:none}
+.psheet-info{background:#f5f5f5;border-radius:8px;padding:8px 12px;
+  font-size:15px;font-weight:500;color:#2f3438;letter-spacing:-0.3px;
+  line-height:24px;margin-bottom:12px;margin-top:4px}
+.psheet-section-title{font-size:15px;font-weight:600;color:#2f3438;
+  line-height:24px;letter-spacing:-0.3px;padding:12px 0}
+.psheet-divider{height:1px;background:#ededed;margin:12px 0}
+.psheet-grid{display:flex;gap:4px;overflow-x:auto;padding-bottom:4px}
+.psheet-grid::-webkit-scrollbar{display:none}
+.psheet-product{flex-shrink:0;width:112px;cursor:pointer}
+.psheet-product-img{width:112px;height:112px;border-radius:4px;overflow:hidden;
+  position:relative;background:#f5f5f5}
+.psheet-product-img img{width:100%;height:100%;object-fit:cover}
+.psheet-radio{position:absolute;top:8px;right:8px;width:20px;height:20px;
+  border-radius:50%;background:#fff;border:1px solid rgba(0,0,0,0.1);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 1px 3px rgba(0,0,0,0.15)}
+.psheet-product.selected .psheet-radio{background:#141414;border-color:#141414}
+.psheet-product.selected .psheet-radio::after{content:'';width:6px;height:6px;
+  border-radius:50%;background:#fff}
+.psheet-product-name{font-size:12px;line-height:16px;color:#2f3438;
+  margin-top:8px;width:104px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden}
+.psheet-product-name b{font-weight:600}
+.psheet-product-price{font-size:12px;font-weight:600;color:#2f3438;
+  line-height:16px;margin-top:2px}
+.psheet-footer{flex-shrink:0;display:flex;gap:8px;padding:12px 16px 34px;
+  border-top:1px solid #f5f5f5}
+.psheet-btn-cancel{flex:0 0 96px;height:48px;border-radius:8px;
+  background:#fff;border:1px solid #e0e0e0;font-size:15px;font-weight:600;
+  color:#2f3438;cursor:pointer;font-family:inherit;letter-spacing:-0.3px}
+.psheet-btn-confirm{flex:1;height:48px;border-radius:8px;background:#00a1ff;
+  border:none;font-size:15px;font-weight:600;color:#fff;cursor:pointer;
+  font-family:inherit;letter-spacing:-0.3px}
+.psheet-btn-confirm:disabled{background:#c8c8c8;cursor:not-allowed}
+
+/* Chat image upload states */
+.msg-upload-preview{display:flex;justify-content:flex-end;padding:0 16px 8px}
+.msg-upload-thumb{width:80px;height:80px;border-radius:8px;overflow:hidden;position:relative}
+.msg-upload-thumb img{width:100%;height:100%;object-fit:cover}
+.msg-upload-loader{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:24px;height:24px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:#fff;
+  border-radius:50%;animation:uploadSpin 0.8s linear infinite}
+@keyframes uploadSpin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+.msg-upload-thumb.loaded .msg-upload-loader{display:none}
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+
+  <!-- ===== SCREEN 1: Entry (아이디어 탭) ===== -->
+  <div class="screen active" id="screen-entry">
+    <div class="entry-top-bar">
+      <span class="status-time">9:41</span>
+      <div class="status-icons">
+        <svg viewBox="0 0 17 12"><path d="M1 8.5h2v3H1zM5 6h2v5.5H5zM9 3.5h2v8H9zM13 1h2v10.5h-2z" fill="currentColor"/></svg>
+        <svg viewBox="0 0 16 12"><path d="M8 2.4C5.6 2.4 3.4 3.3 1.8 4.8L0 3C2 1.1 4.9 0 8 0s6 1.1 8 3l-1.8 1.8C12.6 3.3 10.4 2.4 8 2.4zM4 7.2l-1.8-1.8C3.5 4.2 5.6 3.4 8 3.4s4.5.8 5.8 2l-1.8 1.8C11 6.2 9.6 5.6 8 5.6S5 6.2 4 7.2zM8 8.4c-1 0-1.9.4-2.5 1L8 12l2.5-2.6c-.6-.6-1.5-1-2.5-1z" fill="currentColor"/></svg>
+        <svg viewBox="0 0 25 12"><rect x="0" y="1" width="21" height="10" rx="2" stroke="currentColor" stroke-width="1" fill="none"/><rect x="22" y="4" width="2" height="4" rx="0.5" fill="currentColor"/><rect x="2" y="3" width="17" height="6" rx="1" fill="currentColor"/></svg>
+      </div>
+    </div>
+    <div class="entry-icon-bar">
+      <button class="entry-icon-bar-back" aria-label="Back"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M10.1328 4.49853C10.4443 4.18529 10.9509 4.18391 11.2642 4.49546C11.5774 4.80702 11.5788 5.31359 11.2672 5.62686L5.72397 11.2002H20.2C20.6418 11.2002 21 11.5584 21 12.0002C21 12.442 20.6418 12.8002 20.2 12.8002H5.72397L11.2672 18.3735C11.5788 18.6868 11.5774 19.1934 11.2642 19.5049C10.9509 19.8165 10.4443 19.8151 10.1328 19.5019L3.23276 12.5644C2.92725 12.2572 2.92249 11.7638 3.21845 11.4508L3.23276 11.436L10.1328 4.49853Z" fill="currentColor"/></svg></button>
+      <div class="entry-icon-bar-right">
+        <button class="entry-icon-btn">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 2L4 6v6c0 5 3.5 9.5 8 10 4.5-.5 8-5 8-10V6l-8-4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          <span>뷰 변경</span>
+        </button>
+        <button class="entry-icon-btn">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M3 8V3h5M21 8V3h-5M3 16v5h5M21 16v5h-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>캡처</span>
+        </button>
+        <button class="entry-icon-btn">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 9h8M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>방 목록</span>
+        </button>
+        <button class="entry-icon-btn" onclick="openDrawer()">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>방 목록</span>
+        </button>
+      </div>
+    </div>
+    <div class="entry-tabs-wrap">
+      <div class="entry-tabs">
+        <button class="entry-tab">상품</button>
+        <button class="entry-tab">공간수정</button>
+        <button class="entry-tab active">아이디어</button>
+      </div>
+    </div>
+    <div class="entry-content">
+      <div class="entry-section">
+        <div class="entry-card" onclick="handlePhotoRecommendation()">
+          <img class="entry-card-img" src="/assets/4cae5b98-c6a2-44eb-87e4-aca653c92bd8.jpg" alt="방 사진 찍기">
+          <div class="entry-card-bottom purple">
+            <div class="entry-card-text">
+              <div class="entry-card-title">방 사진 찍고 상품 추천받기</div>
+              <div class="entry-card-desc">사진만 있으면 OK</div>
+            </div>
+            <button class="entry-card-btn">시작하기</button>
+          </div>
+        </div>
+      </div>
+      <div class="entry-section">
+        <div class="entry-card" onclick="handleProductCombo()">
+          <img class="entry-card-img" src="/assets/59408ebf-5584-4312-a575-5511fd092d80.jpg" alt="상품 합성">
+          <div class="entry-card-tag" style="left:211px;top:55px"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div>
+          <div class="entry-card-tag" style="left:91px;top:85px"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div>
+          <div class="entry-card-tag" style="left:276px;top:88px"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div>
+          <div class="entry-card-bottom brown">
+            <div class="entry-card-text">
+              <div class="entry-card-title">상품 합성 추천받기</div>
+              <div class="entry-card-desc">우리 집에 딱 맞는 스타일 찾기</div>
+            </div>
+            <button class="entry-card-btn">시작하기</button>
+          </div>
+        </div>
+      </div>
+      <div style="height:12px;background:#f5f5f5"></div>
+      <div class="entry-others">
+        <div class="entry-others-title">다른 사람 방 구경하기</div>
+        <div class="entry-search">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M21 21l-4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>방을 검색해보세요</span>
+        </div>
+        <div class="entry-filter-chips">
+          <button class="entry-filter-chip">추천순 <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#141414" stroke-width="2" stroke-linecap="round"/></svg></button>
+          <button class="entry-filter-chip">전체 평수 <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#141414" stroke-width="2" stroke-linecap="round"/></svg></button>
+          <button class="entry-filter-chip">전체 색상 <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#141414" stroke-width="2" stroke-linecap="round"/></svg></button>
+          <button class="entry-filter-chip">전체 예산 <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#141414" stroke-width="2" stroke-linecap="round"/></svg></button>
+        </div>
+        <div class="entry-feed">
+          <div class="entry-feed-row">
+            <div class="entry-feed-header">
+              <span class="entry-feed-name">김초쿠누나</span>
+              <span class="entry-feed-time">5시간 전</span>
+            </div>
+            <div class="entry-feed-img"><img src="/assets/780a5c76-28a0-412d-ba37-af51b5268551.jpg" alt="room"></div>
+            <div class="entry-feed-buttons">
+              <div class="entry-feed-btn"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-4.5-7-10a4 4 0 017-2.5A4 4 0 0119 11c0 5.5-7 10-7 10z" stroke="#141414" stroke-width="1.5"/></svg>2</div>
+              <div class="entry-feed-btn"><svg viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="#141414" stroke-width="1.5"/></svg>1</div>
+              <div class="entry-feed-btn"><svg viewBox="0 0 24 24" fill="none"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z" stroke="#141414" stroke-width="1.5"/></svg>14</div>
+              <div class="entry-feed-btn"><svg viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M16 6l-4-4-4 4M12 2v13" stroke="#141414" stroke-width="1.5" stroke-linecap="round"/></svg>1</div>
+            </div>
+            <div class="entry-feed-title">좁고 긴 방 힙한 인테리어</div>
+            <div class="entry-feed-desc">작업실에서 가장 애정하는 가구입니다. 식물들을 올려두고, 식물관리 용품들도 보관하고 있어요.</div>
+          </div>
+          <div class="entry-feed-row">
+            <div class="entry-feed-header">
+              <span class="entry-feed-name">민지하우스</span>
+              <span class="entry-feed-time">2일 전</span>
+            </div>
+            <div class="entry-feed-img"><img src="/assets/780a5c76-28a0-412d-ba37-af51b5268551.jpg" alt="room"></div>
+            <div class="entry-feed-buttons">
+              <div class="entry-feed-btn"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-4.5-7-10a4 4 0 017-2.5A4 4 0 0119 11c0 5.5-7 10-7 10z" stroke="#141414" stroke-width="1.5"/></svg>5</div>
+              <div class="entry-feed-btn"><svg viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="#141414" stroke-width="1.5"/></svg>3</div>
+              <div class="entry-feed-btn"><svg viewBox="0 0 24 24" fill="none"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z" stroke="#141414" stroke-width="1.5"/></svg>22</div>
+            </div>
+            <div class="entry-feed-title">미니멀 화이트 톤 거실</div>
+            <div class="entry-feed-desc">화이트 톤으로 통일한 거실 인테리어입니다. 깔끔하고 넓어 보여요.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN 1 OLD: removed ===== -->
+  <div style="display:none" id="screen-entry-old">
+    <div class="status-bar">
+      <span class="status-time">9:41</span>
+      <div class="status-icons">
+        <svg viewBox="0 0 17 12"><path d="M1 8.5h2v3H1zM5 6h2v5.5H5zM9 3.5h2v8H9zM13 1h2v10.5h-2z" fill="currentColor"/></svg>
+        <svg viewBox="0 0 16 12"><path d="M8 2.4C5.6 2.4 3.4 3.3 1.8 4.8L0 3C2 1.1 4.9 0 8 0s6 1.1 8 3l-1.8 1.8C12.6 3.3 10.4 2.4 8 2.4zM4 7.2l-1.8-1.8C3.5 4.2 5.6 3.4 8 3.4s4.5.8 5.8 2l-1.8 1.8C11 6.2 9.6 5.6 8 5.6S5 6.2 4 7.2zM8 8.4c-1 0-1.9.4-2.5 1L8 12l2.5-2.6c-.6-.6-1.5-1-2.5-1z" fill="currentColor"/></svg>
+        <svg viewBox="0 0 25 12"><rect x="0" y="1" width="21" height="10" rx="2" stroke="currentColor" stroke-width="1" fill="none"/><rect x="22" y="4" width="2" height="4" rx="0.5" fill="currentColor"/><rect x="2" y="3" width="17" height="6" rx="1" fill="currentColor"/></svg>
+      </div>
+    </div>
+    <div class="top-nav">
+      <div class="top-nav-left">
+        <button aria-label="Back"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M10.1328 4.49853C10.4443 4.18529 10.9509 4.18391 11.2642 4.49546C11.5774 4.80702 11.5788 5.31359 11.2672 5.62686L5.72397 11.2002H20.2C20.6418 11.2002 21 11.5584 21 12.0002C21 12.442 20.6418 12.8002 20.2 12.8002H5.72397L11.2672 18.3735C11.5788 18.6868 11.5774 19.1934 11.2642 19.5049C10.9509 19.8165 10.4443 19.8151 10.1328 19.5019L3.23276 12.5644C2.92725 12.2572 2.92249 11.7638 3.21845 11.4508L3.23276 11.436L10.1328 4.49853Z" fill="currentColor"/></svg></button>
+      </div>
+      <span class="top-nav-title">오늘의집 AI</span>
+      <div class="top-nav-right">
+        <button aria-label="New"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3.04986C12.4418 3.04986 12.8 3.40804 12.8 3.84986C12.8 4.29168 12.4418 4.64985 12 4.64986H7.92509C6.63473 4.64986 5.86424 4.94817 5.4059 5.40703C4.94739 5.86607 4.65034 6.63686 4.65033 7.92486V16.0749C4.65033 16.0771 4.65031 16.0794 4.65029 16.0817C4.63933 17.3645 4.93601 18.1262 5.39443 18.5812C5.8564 19.0396 6.63472 19.3382 7.92768 19.3498H16.072C17.365 19.3382 18.1434 19.0396 18.6055 18.5812C19.0639 18.1262 19.3607 17.3645 19.3497 16.0817V11.9999C19.3497 11.558 19.7078 11.1999 20.1497 11.1999C20.5915 11.1999 20.9496 11.558 20.9497 11.9999V16.068L20.95 16.1384C20.9516 17.6128 20.605 18.8511 19.7325 19.7169C18.8502 20.5924 17.5804 20.9371 16.0816 20.9498H7.9249C6.41938 20.9371 5.14963 20.5924 4.26738 19.7168C3.3811 18.8373 3.03748 17.5734 3.05033 16.068V7.92486C3.05034 6.42441 3.39355 5.15765 4.27387 4.27632C5.15437 3.39481 6.42135 3.04986 7.92509 3.04986H12Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M17.7863 2.64483C18.6845 1.74665 20.1408 1.74665 21.039 2.64483L21.3219 2.92769C22.2201 3.82589 22.2201 5.28217 21.3219 6.18037L13.8951 13.6071C13.6982 13.804 13.4311 13.9146 13.1527 13.9146L11.3523 13.9147L11.3187 13.9143C10.6274 13.8968 10.0703 13.3397 10.0527 12.6484L10.0522 12.6148L10.052 10.8141C10.052 10.5356 10.1627 10.2685 10.3596 10.0716L17.7863 2.64483ZM11.652 11.0418L11.6522 12.3147L12.9248 12.3147L18.557 6.68252L17.2842 5.40972L11.652 11.0418ZM19.9077 3.77622C19.6343 3.50287 19.191 3.50287 18.9177 3.77622L18.4156 4.27832L19.6884 5.55113L20.1905 5.04903C20.4638 4.77566 20.4638 4.3324 20.1905 4.05904L19.9077 3.77622Z" fill="currentColor"/></svg></button>
+        <button aria-label="Menu" onclick="openDrawer()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M19.55 17.65C19.9918 17.65 20.35 18.0082 20.35 18.45C20.35 18.8918 19.9918 19.25 19.55 19.25H4.39998C3.95815 19.25 3.59998 18.8918 3.59998 18.45C3.59998 18.0082 3.95815 17.65 4.39998 17.65H19.55Z" fill="currentColor"/><path d="M19.55 11.2C19.9918 11.2 20.35 11.5582 20.35 12C20.35 12.4418 19.9918 12.8 19.55 12.8H4.39998C3.95815 12.8 3.59998 12.4418 3.59998 12C3.59998 11.5582 3.95815 11.2 4.39998 11.2H19.55Z" fill="currentColor"/><path d="M19.55 4.75C19.9918 4.75 20.35 5.10817 20.35 5.55C20.35 5.99183 19.9918 6.35 19.55 6.35H4.39998C3.95815 6.35 3.59998 5.99183 3.59998 5.55C3.59998 5.10817 3.95815 4.75 4.39998 4.75H19.55Z" fill="currentColor"/></svg></button>
+      </div>
+    </div>
+    <div class="entry-body">
+      <div class="entry-greeting">혼자 찾는 건 이제 그만,
+딱 맞는 제품을 찾아드려요</div>
+      <div class="entry-chips">
+        <button class="entry-chip-camera" onclick="handlePhotoRecommendation()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.3626 2.92652C11.3616 2.2911 12.6383 2.2911 13.6373 2.92652L19.6373 6.74297L19.6783 6.76949C20.5335 7.33287 21.0499 8.28905 21.05 9.31534V14.0062L21.0489 14.2562V14.2578L21.0489 14.2594C21.0278 16.8577 20.6843 18.799 19.4056 20.0249C18.2671 21.1164 16.5549 21.4765 14.3 21.5393V21.55H10.5C7.80574 21.55 5.80133 21.2327 4.53442 19.9665C3.28721 18.7198 2.96011 16.7586 2.9502 14.1288L2.94995 14.0031V9.31534C2.94998 8.27277 3.48287 7.30255 4.3626 6.74297L10.3626 2.92652ZM13.6533 10.3C13.4389 10.3 13.2572 10.4546 13.2097 10.6636C12.8274 12.3448 11.9462 13.2251 10.2632 13.6069C10.0544 13.6543 9.89997 13.8358 9.89995 14.0499C9.89996 14.264 10.0544 14.4455 10.2632 14.4929C11.9462 14.8747 12.8274 15.7551 13.2097 17.4363C13.2572 17.6454 13.4389 17.8 13.6533 17.8C13.8676 17.7999 14.0493 17.6454 14.0968 17.4363C14.4785 15.7577 15.3577 14.8774 17.0356 14.4946C17.2451 14.4468 17.3999 14.2647 17.4 14.0499C17.3999 13.8351 17.2451 13.6529 17.0356 13.6051C15.3577 13.2224 14.4785 12.3422 14.0968 10.6636C14.0493 10.4546 13.8676 10.3 13.6533 10.3ZM9.12661 8.04996C9.01945 8.04996 8.92862 8.12726 8.90483 8.23174C8.71369 9.07236 8.27305 9.51251 7.43159 9.70342C7.3272 9.72711 7.24998 9.81787 7.24995 9.92491C7.24995 10.032 7.32719 10.1227 7.43159 10.1464C8.27305 10.3373 8.71369 10.7776 8.90483 11.6182C8.92861 11.7227 9.01944 11.8 9.12661 11.8C9.23378 11.8 9.32462 11.7227 9.34839 11.6182C9.53925 10.7788 9.97882 10.3387 10.8178 10.1473C10.9225 10.1234 10.9999 10.0323 11 9.92491C10.9999 9.8175 10.9225 9.72643 10.8178 9.70254C9.97881 9.51117 9.53924 9.07108 9.34839 8.23174C9.32461 8.12726 9.23377 8.04996 9.12661 8.04996Z" fill="#00a1ff"/></svg>
+          방 사진 촬영하고 상품 추천받기
+        </button>
+        <div class="entry-chip-group">
+          <button class="entry-chip" onclick="handleChipClick('10만원대 싱글 침대')">
+            10만원대 싱글 침대 <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M7.23381 3.21123C7.53147 2.88473 8.03748 2.86134 8.36399 3.15898L17.414 11.409C17.5803 11.5606 17.675 11.7752 17.675 12.0002C17.675 12.2182 17.5861 12.4264 17.4294 12.577L8.36399 20.8414C8.03748 21.1391 7.53147 21.1157 7.23381 20.7892C6.93617 20.4626 6.95956 19.9566 7.28606 19.659L15.6875 12.0002L7.28606 4.34141C6.95956 4.04375 6.93617 3.53774 7.23381 3.21123Z" fill="#8c8c8c"/></svg>
+          </button>
+          <button class="entry-chip" onclick="handleChipClick('원목 가구 추천해줘')">
+            원목 가구 추천해줘 <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M7.23381 3.21123C7.53147 2.88473 8.03748 2.86134 8.36399 3.15898L17.414 11.409C17.5803 11.5606 17.675 11.7752 17.675 12.0002C17.675 12.2182 17.5861 12.4264 17.4294 12.577L8.36399 20.8414C8.03748 21.1391 7.53147 21.1157 7.23381 20.7892C6.93617 20.4626 6.95956 19.9566 7.28606 19.659L15.6875 12.0002L7.28606 4.34141C6.95956 4.04375 6.93617 3.53774 7.23381 3.21123Z" fill="#8c8c8c"/></svg>
+          </button>
+        </div>
+        <div class="entry-chip-group">
+          <button class="entry-chip" onclick="handleChipClick('20만원 이하 패브릭 소파 추천')">
+            20만원 이하 패브릭 소파 추천 <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M7.23381 3.21123C7.53147 2.88473 8.03748 2.86134 8.36399 3.15898L17.414 11.409C17.5803 11.5606 17.675 11.7752 17.675 12.0002C17.675 12.2182 17.5861 12.4264 17.4294 12.577L8.36399 20.8414C8.03748 21.1391 7.53147 21.1157 7.23381 20.7892C6.93617 20.4626 6.95956 19.9566 7.28606 19.659L15.6875 12.0002L7.28606 4.34141C6.95956 4.04375 6.93617 3.53774 7.23381 3.21123Z" fill="#8c8c8c"/></svg>
+          </button>
+          <button class="entry-chip" onclick="handleChipClick('커튼 추천')">
+            커튼 추천 <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M7.23381 3.21123C7.53147 2.88473 8.03748 2.86134 8.36399 3.15898L17.414 11.409C17.5803 11.5606 17.675 11.7752 17.675 12.0002C17.675 12.2182 17.5861 12.4264 17.4294 12.577L8.36399 20.8414C8.03748 21.1391 7.53147 21.1157 7.23381 20.7892C6.93617 20.4626 6.95956 19.9566 7.28606 19.659L15.6875 12.0002L7.28606 4.34141C6.95956 4.04375 6.93617 3.53774 7.23381 3.21123Z" fill="#8c8c8c"/></svg>
+          </button>
+        </div>
+        <div class="entry-chip-group">
+          <button class="entry-chip" onclick="handleChipClick('조명 추천')">
+            조명 추천 <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M7.23381 3.21123C7.53147 2.88473 8.03748 2.86134 8.36399 3.15898L17.414 11.409C17.5803 11.5606 17.675 11.7752 17.675 12.0002C17.675 12.2182 17.5861 12.4264 17.4294 12.577L8.36399 20.8414C8.03748 21.1391 7.53147 21.1157 7.23381 20.7892C6.93617 20.4626 6.95956 19.9566 7.28606 19.659L15.6875 12.0002L7.28606 4.34141C6.95956 4.04375 6.93617 3.53774 7.23381 3.21123Z" fill="#8c8c8c"/></svg>
+          </button>
+          <button class="entry-chip" onclick="handleChipClick('좁은 방에 필요한 가구 추천해줘')">
+            좁은 방에 필요한 가구 추천해줘 <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M7.23381 3.21123C7.53147 2.88473 8.03748 2.86134 8.36399 3.15898L17.414 11.409C17.5803 11.5606 17.675 11.7752 17.675 12.0002C17.675 12.2182 17.5861 12.4264 17.4294 12.577L8.36399 20.8414C8.03748 21.1391 7.53147 21.1157 7.23381 20.7892C6.93617 20.4626 6.95956 19.9566 7.28606 19.659L15.6875 12.0002L7.28606 4.34141C6.95956 4.04375 6.93617 3.53774 7.23381 3.21123Z" fill="#8c8c8c"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="entry-input-kb kb-open" id="entryInputKb">
+        <div class="entry-input-row">
+          <button class="entry-plus" onclick="openPlusSheet()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2.19995C12.4418 2.19995 12.8 2.55812 12.8 2.99995V11.2H21C21.4418 11.2 21.8 11.5581 21.8 12C21.8 12.4418 21.4418 12.8 21 12.8H12.8V21C12.8 21.4418 12.4418 21.8 12 21.8C11.5581 21.8 11.2 21.4418 11.2 21V12.8H2.99995C2.55812 12.8 2.19995 12.4418 2.19995 12C2.19995 11.5581 2.55812 11.2 2.99995 11.2H11.2V2.99995C11.2 2.55812 11.5581 2.19995 12 2.19995Z" fill="currentColor"/></svg></button>
+          <div class="entry-input-field">
+            <input class="entry-input" id="entryInputField" type="text" placeholder="원하는 사이즈, 색상, 예산에 맞춰 물어보세요." onkeydown="if(event.key==='Enter'&&this.value.trim()){handleChipClick(this.value.trim());this.value=''}">
+          </div>
+        </div>
+        <div class="entry-keyboard">
+          <div class="kb-row">
+            <div class="kb-key">ㅂ</div><div class="kb-key">ㅈ</div><div class="kb-key">ㄷ</div>
+            <div class="kb-key">ㄱ</div><div class="kb-key">ㅅ</div><div class="kb-key">ㅛ</div>
+            <div class="kb-key">ㅕ</div><div class="kb-key">ㅑ</div><div class="kb-key">ㅐ</div>
+            <div class="kb-key">ㅔ</div>
+          </div>
+          <div class="kb-row">
+            <div class="kb-key">ㅁ</div><div class="kb-key">ㄴ</div><div class="kb-key">ㅇ</div>
+            <div class="kb-key">ㄹ</div><div class="kb-key">ㅎ</div><div class="kb-key">ㅗ</div>
+            <div class="kb-key">ㅓ</div><div class="kb-key">ㅏ</div><div class="kb-key">ㅣ</div>
+          </div>
+          <div class="kb-row">
+            <div class="kb-key wide">⇧</div>
+            <div class="kb-key">ㅋ</div><div class="kb-key">ㅌ</div><div class="kb-key">ㅊ</div>
+            <div class="kb-key">ㅍ</div><div class="kb-key">ㅠ</div><div class="kb-key">ㅜ</div>
+            <div class="kb-key">ㅡ</div>
+            <div class="kb-key wide">⌫</div>
+          </div>
+          <div class="kb-row">
+            <div class="kb-key action">123</div>
+            <div class="kb-key" style="max-width:36px">😊</div>
+            <div class="kb-key space">스페이스</div>
+            <div class="kb-key action">⏎</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN 2: Chat ===== -->
+  <div class="screen slide-right" id="screen-chat">
+    <div class="status-bar">
+      <span class="status-time">9:41</span>
+      <div class="status-icons">
+        <svg viewBox="0 0 17 12"><path d="M1 8.5h2v3H1zM5 6h2v5.5H5zM9 3.5h2v8H9zM13 1h2v10.5h-2z" fill="currentColor"/></svg>
+        <svg viewBox="0 0 16 12"><path d="M8 2.4C5.6 2.4 3.4 3.3 1.8 4.8L0 3C2 1.1 4.9 0 8 0s6 1.1 8 3l-1.8 1.8C12.6 3.3 10.4 2.4 8 2.4zM4 7.2l-1.8-1.8C3.5 4.2 5.6 3.4 8 3.4s4.5.8 5.8 2l-1.8 1.8C11 6.2 9.6 5.6 8 5.6S5 6.2 4 7.2zM8 8.4c-1 0-1.9.4-2.5 1L8 12l2.5-2.6c-.6-.6-1.5-1-2.5-1z" fill="currentColor"/></svg>
+        <svg viewBox="0 0 25 12"><rect x="0" y="1" width="21" height="10" rx="2" stroke="currentColor" stroke-width="1" fill="none"/><rect x="22" y="4" width="2" height="4" rx="0.5" fill="currentColor"/><rect x="2" y="3" width="17" height="6" rx="1" fill="currentColor"/></svg>
+      </div>
+    </div>
+    <div class="top-nav">
+      <div class="top-nav-left">
+        <button aria-label="Back" onclick="goToEntry()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M10.1328 4.49853C10.4443 4.18529 10.9509 4.18391 11.2642 4.49546C11.5774 4.80702 11.5788 5.31359 11.2672 5.62686L5.72397 11.2002H20.2C20.6418 11.2002 21 11.5584 21 12.0002C21 12.442 20.6418 12.8002 20.2 12.8002H5.72397L11.2672 18.3735C11.5788 18.6868 11.5774 19.1934 11.2642 19.5049C10.9509 19.8165 10.4443 19.8151 10.1328 19.5019L3.23276 12.5644C2.92725 12.2572 2.92249 11.7638 3.21845 11.4508L3.23276 11.436L10.1328 4.49853Z" fill="currentColor"/></svg></button>
+      </div>
+      <span class="top-nav-title">오늘의집 AI</span>
+      <div class="top-nav-right">
+        <button aria-label="New"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3.04986C12.4418 3.04986 12.8 3.40804 12.8 3.84986C12.8 4.29168 12.4418 4.64985 12 4.64986H7.92509C6.63473 4.64986 5.86424 4.94817 5.4059 5.40703C4.94739 5.86607 4.65034 6.63686 4.65033 7.92486V16.0749C4.65033 16.0771 4.65031 16.0794 4.65029 16.0817C4.63933 17.3645 4.93601 18.1262 5.39443 18.5812C5.8564 19.0396 6.63472 19.3382 7.92768 19.3498H16.072C17.365 19.3382 18.1434 19.0396 18.6055 18.5812C19.0639 18.1262 19.3607 17.3645 19.3497 16.0817V11.9999C19.3497 11.558 19.7078 11.1999 20.1497 11.1999C20.5915 11.1999 20.9496 11.558 20.9497 11.9999V16.068L20.95 16.1384C20.9516 17.6128 20.605 18.8511 19.7325 19.7169C18.8502 20.5924 17.5804 20.9371 16.0816 20.9498H7.9249C6.41938 20.9371 5.14963 20.5924 4.26738 19.7168C3.3811 18.8373 3.03748 17.5734 3.05033 16.068V7.92486C3.05034 6.42441 3.39355 5.15765 4.27387 4.27632C5.15437 3.39481 6.42135 3.04986 7.92509 3.04986H12Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M17.7863 2.64483C18.6845 1.74665 20.1408 1.74665 21.039 2.64483L21.3219 2.92769C22.2201 3.82589 22.2201 5.28217 21.3219 6.18037L13.8951 13.6071C13.6982 13.804 13.4311 13.9146 13.1527 13.9146L11.3523 13.9147L11.3187 13.9143C10.6274 13.8968 10.0703 13.3397 10.0527 12.6484L10.0522 12.6148L10.052 10.8141C10.052 10.5356 10.1627 10.2685 10.3596 10.0716L17.7863 2.64483ZM11.652 11.0418L11.6522 12.3147L12.9248 12.3147L18.557 6.68252L17.2842 5.40972L11.652 11.0418ZM19.9077 3.77622C19.6343 3.50287 19.191 3.50287 18.9177 3.77622L18.4156 4.27832L19.6884 5.55113L20.1905 5.04903C20.4638 4.77566 20.4638 4.3324 20.1905 4.05904L19.9077 3.77622Z" fill="currentColor"/></svg></button>
+        <button aria-label="Menu" onclick="openDrawer()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M19.55 17.65C19.9918 17.65 20.35 18.0082 20.35 18.45C20.35 18.8918 19.9918 19.25 19.55 19.25H4.39998C3.95815 19.25 3.59998 18.8918 3.59998 18.45C3.59998 18.0082 3.95815 17.65 4.39998 17.65H19.55Z" fill="currentColor"/><path d="M19.55 11.2C19.9918 11.2 20.35 11.5582 20.35 12C20.35 12.4418 19.9918 12.8 19.55 12.8H4.39998C3.95815 12.8 3.59998 12.4418 3.59998 12C3.59998 11.5582 3.95815 11.2 4.39998 11.2H19.55Z" fill="currentColor"/><path d="M19.55 4.75C19.9918 4.75 20.35 5.10817 20.35 5.55C20.35 5.99183 19.9918 6.35 19.55 6.35H4.39998C3.95815 6.35 3.59998 5.99183 3.59998 5.55C3.59998 5.10817 3.95815 4.75 4.39998 4.75H19.55Z" fill="currentColor"/></svg></button>
+      </div>
+    </div>
+    <div class="chat-body" id="chatBody"></div>
+    <div class="chat-bottom">
+      <div class="scroll-down-btn" id="scrollDownBtn" onclick="scrollToBottom()">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4.5 7l4.5 4.5L13.5 7" stroke="#141414" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <button class="chat-plus" onclick="openPlusSheet()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2.19995C12.4418 2.19995 12.8 2.55812 12.8 2.99995V11.2H21C21.4418 11.2 21.8 11.5581 21.8 12C21.8 12.4418 21.4418 12.8 21 12.8H12.8V21C12.8 21.4418 12.4418 21.8 12 21.8C11.5581 21.8 11.2 21.4418 11.2 21V12.8H2.99995C2.55812 12.8 2.19995 12.4418 2.19995 12C2.19995 11.5581 2.55812 11.2 2.99995 11.2H11.2V2.99995C11.2 2.55812 11.5581 2.19995 12 2.19995Z" fill="currentColor"/></svg></button>
+      <div class="chat-input-wrap" id="chatInputWrap">
+        <div class="chat-input-thumb-wrap" id="chatInputThumbWrap">
+          <div class="chat-input-thumb" id="chatInputThumb"></div>
+        </div>
+        <input class="chat-input" id="chatInput" type="text" placeholder="무엇이든 물어보세요" onkeydown="if(event.key==='Enter')sendChatMessage()">
+        <button class="chat-send" id="chatSend" onclick="sendChatMessage()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN 3: 3D View ===== -->
+  <div class="screen slide-right" id="screen-3d">
+    <div class="status-bar dark">
+      <span class="status-time">9:41</span>
+      <div class="status-icons" style="color:#fff">
+        <svg viewBox="0 0 17 12"><path d="M1 8.5h2v3H1zM5 6h2v5.5H5zM9 3.5h2v8H9zM13 1h2v10.5h-2z" fill="currentColor"/></svg>
+        <svg viewBox="0 0 16 12"><path d="M8 2.4C5.6 2.4 3.4 3.3 1.8 4.8L0 3C2 1.1 4.9 0 8 0s6 1.1 8 3l-1.8 1.8C12.6 3.3 10.4 2.4 8 2.4zM4 7.2l-1.8-1.8C3.5 4.2 5.6 3.4 8 3.4s4.5.8 5.8 2l-1.8 1.8C11 6.2 9.6 5.6 8 5.6S5 6.2 4 7.2zM8 8.4c-1 0-1.9.4-2.5 1L8 12l2.5-2.6c-.6-.6-1.5-1-2.5-1z" fill="currentColor"/></svg>
+        <svg viewBox="0 0 25 12"><rect x="0" y="1" width="21" height="10" rx="2" stroke="currentColor" stroke-width="1" fill="none"/><rect x="22" y="4" width="2" height="4" rx="0.5" fill="currentColor"/><rect x="2" y="3" width="17" height="6" rx="1" fill="currentColor"/></svg>
+      </div>
+    </div>
+    <div class="three-d-top">
+      <button onclick="goToChat()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M10.1328 4.49853C10.4443 4.18529 10.9509 4.18391 11.2642 4.49546C11.5774 4.80702 11.5788 5.31359 11.2672 5.62686L5.72397 11.2002H20.2C20.6418 11.2002 21 11.5584 21 12.0002C21 12.442 20.6418 12.8002 20.2 12.8002H5.72397L11.2672 18.3735C11.5788 18.6868 11.5774 19.1934 11.2642 19.5049C10.9509 19.8165 10.4443 19.8151 10.1328 19.5019L3.23276 12.5644C2.92725 12.2572 2.92249 11.7638 3.21845 11.4508L3.23276 11.436L10.1328 4.49853Z" fill="currentColor"/></svg></button>
+      <button><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M19.55 17.65C19.9918 17.65 20.35 18.0082 20.35 18.45C20.35 18.8918 19.9918 19.25 19.55 19.25H4.39998C3.95815 19.25 3.59998 18.8918 3.59998 18.45C3.59998 18.0082 3.95815 17.65 4.39998 17.65H19.55Z" fill="currentColor"/><path d="M19.55 11.2C19.9918 11.2 20.35 11.5582 20.35 12C20.35 12.4418 19.9918 12.8 19.55 12.8H4.39998C3.95815 12.8 3.59998 12.4418 3.59998 12C3.59998 11.5582 3.95815 11.2 4.39998 11.2H19.55Z" fill="currentColor"/><path d="M19.55 4.75C19.9918 4.75 20.35 5.10817 20.35 5.55C20.35 5.99183 19.9918 6.35 19.55 6.35H4.39998C3.95815 6.35 3.59998 5.99183 3.59998 5.55C3.59998 5.10817 3.95815 4.75 4.39998 4.75H19.55Z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="three-d-scene">
+      <img src="/assets/101daf63-e4ac-40bc-8fb3-bf4ce8dd602f.jpg" alt="3D Room">
+      <div class="three-d-pill" onclick="goToChatFromEntry()">
+        <img src="/assets/be2eccd9-a7a8-4b72-a06b-5cd44d00dd25.svg" alt="sparkle">
+        맞춤 상품 추천
+      </div>
+    </div>
+    <div class="three-d-sheet">
+      <div class="sheet-grabber"></div>
+      <div class="sheet-tabs" id="sheetTabs">
+        <button class="sheet-tab active" onclick="switchSheetTab(this, 'product')">상품</button>
+        <button class="sheet-tab" onclick="switchSheetTab(this, 'space')">공간수정</button>
+        <button class="sheet-tab" onclick="switchSheetTab(this, 'idea')">아이디어</button>
+      </div>
+
+      <!-- 상품 tab content -->
+      <div class="sheet-tab-content active" id="sheetContentProduct" style="display:flex;flex-direction:column;flex:1;min-height:0">
+        <div class="sheet-subtabs" id="sheetSubtabs">
+          <button class="sheet-subtab active" onclick="switchSubtab(this)">배치상품</button>
+          <button class="sheet-subtab" onclick="switchSubtab(this)">스크랩</button>
+          <button class="sheet-subtab" onclick="switchSubtab(this)">검색</button>
+          <button class="sheet-subtab" onclick="switchSubtab(this)">테이블</button>
+          <button class="sheet-subtab" onclick="switchSubtab(this)">수납장</button>
+          <button class="sheet-subtab" onclick="switchSubtab(this)">데코</button>
+          <button class="sheet-subtab" onclick="switchSubtab(this)">조명</button>
+        </div>
+        <div class="sheet-product-list" id="sheetProductList"></div>
+      </div>
+
+      <!-- 아이디어 tab content -->
+      <div class="sheet-tab-content" id="sheetContentIdea" style="overflow-y:auto;flex:1;min-height:0">
+        <div class="idea-content">
+          <div class="idea-card" onclick="handlePhotoRecommendation()" style="margin-top:16px">
+            <div style="position:absolute;inset:0;background:linear-gradient(135deg,#5a4bb0,#2e287b)"></div>
+            <div class="idea-card-bottom purple">
+              <div class="idea-card-text">
+                <div class="idea-card-title">방 사진 찍고 상품 추천받기</div>
+                <div class="idea-card-desc">사진만 있으면 OK</div>
+              </div>
+              <button class="idea-card-btn">시작하기</button>
+            </div>
+          </div>
+
+          <div class="idea-card" onclick="handleProductCombo()">
+            <div style="position:absolute;inset:0;background:linear-gradient(135deg,#c89065,#a17040)"></div>
+            <div class="idea-card-bottom brown">
+              <div class="idea-card-text">
+                <div class="idea-card-title">상품 합성 추천받기</div>
+                <div class="idea-card-desc">우리 집에 딱 맞는 스타일 찾기</div>
+              </div>
+              <button class="idea-card-btn">시작하기</button>
+            </div>
+          </div>
+
+          <div class="idea-divider"></div>
+
+          <div class="idea-others">
+            <div class="idea-others-title">다른 사람 방 구경하기</div>
+            <div class="idea-search">
+              <svg class="idea-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M21 21l-4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <span class="idea-search-input">방을 검색해보세요</span>
+            </div>
+            <div class="idea-chips">
+              <button class="idea-chip">추천순 <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#141414" stroke-width="2" stroke-linecap="round"/></svg></button>
+              <button class="idea-chip">전체 평수 <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#141414" stroke-width="2" stroke-linecap="round"/></svg></button>
+              <button class="idea-chip">전체 색상 <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#141414" stroke-width="2" stroke-linecap="round"/></svg></button>
+              <button class="idea-chip">전체 예산 <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#141414" stroke-width="2" stroke-linecap="round"/></svg></button>
+              <button class="idea-chip">좋아요 <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#141414" stroke-width="2" stroke-linecap="round"/></svg></button>
+            </div>
+            <div class="idea-feed">
+              <div class="idea-row">
+                <div class="idea-row-header">
+                  <span class="idea-row-name">김초쿠누나</span>
+                  <span class="idea-row-time">5시간 전</span>
+                </div>
+                <div class="idea-row-img">
+                  <img src="/assets/16997c93-e7bf-4103-a716-c2d4d3256ff4.jpg" alt="room">
+                </div>
+                <div class="idea-row-buttons">
+                  <div class="idea-row-buttons-left">
+                    <div class="idea-row-btn"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-4.5-7-10a4 4 0 017-2.5A4 4 0 0119 11c0 5.5-7 10-7 10z" stroke="#141414" stroke-width="1.5"/></svg>2</div>
+                    <div class="idea-row-btn"><svg viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="#141414" stroke-width="1.5"/></svg>1</div>
+                    <div class="idea-row-btn"><svg viewBox="0 0 24 24" fill="none"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z" stroke="#141414" stroke-width="1.5"/></svg>14</div>
+                    <div class="idea-row-btn"><svg viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M16 6l-4-4-4 4M12 2v13" stroke="#141414" stroke-width="1.5" stroke-linecap="round"/></svg>1</div>
+                  </div>
+                </div>
+                <div class="idea-row-title">좁고 긴 방 힙한 인테리어</div>
+                <div class="idea-row-desc">작업실에서 가장 애정하는 가구입니다. 식물들을 올려두고, 식물관리 용품들도 보관하고 있어요.</div>
+              </div>
+              <div class="idea-row">
+                <div class="idea-row-header">
+                  <span class="idea-row-name">민지하우스</span>
+                  <span class="idea-row-time">2일 전</span>
+                </div>
+                <div class="idea-row-img">
+                  <img src="/assets/16997c93-e7bf-4103-a716-c2d4d3256ff4.jpg" alt="room">
+                </div>
+                <div class="idea-row-buttons">
+                  <div class="idea-row-buttons-left">
+                    <div class="idea-row-btn"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-4.5-7-10a4 4 0 017-2.5A4 4 0 0119 11c0 5.5-7 10-7 10z" stroke="#141414" stroke-width="1.5"/></svg>5</div>
+                    <div class="idea-row-btn"><svg viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="#141414" stroke-width="1.5"/></svg>3</div>
+                    <div class="idea-row-btn"><svg viewBox="0 0 24 24" fill="none"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z" stroke="#141414" stroke-width="1.5"/></svg>22</div>
+                    <div class="idea-row-btn"><svg viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M16 6l-4-4-4 4M12 2v13" stroke="#141414" stroke-width="1.5" stroke-linecap="round"/></svg>2</div>
+                  </div>
+                </div>
+                <div class="idea-row-title">미니멀 화이트 톤 거실</div>
+                <div class="idea-row-desc">화이트 톤으로 통일한 거실 인테리어입니다. 깔끔하고 넓어 보여요.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN 4: Placement (배치화면, Figma 1390:9912) ===== -->
+  <div class="screen slide-down" id="screen-placement">
+    <!-- 3D room with edit controls (Figma 1395:10422) -->
+    <img class="placement-room-image" src="/assets/25ccd88a-d800-49e5-a6e6-c7f467943e28.jpg" alt="">
+    <!-- Top nav: only X close at right -->
+    <div class="placement-top-nav">
+      <button class="placement-close-btn" onclick="closePlacement()" aria-label="닫기">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M18.6843 4.18427C18.9967 3.87185 19.5032 3.87185 19.8157 4.18427C20.1281 4.49669 20.1281 5.0032 19.8157 5.31561L13.1313 11.9999L19.8157 18.6843C20.128 18.9533 20.1281 19.4599 19.8157 19.7723C19.5032 20.0847 18.9967 20.0847 18.6843 19.7723L12 13.1313L5.31567 19.8156C5.00325 20.1281 4.49674 20.1281 4.18432 19.8156C3.87192 19.5032 3.87191 18.9967 4.18432 18.6843L10.8686 11.9999L4.18432 5.31561C3.87192 5.0032 3.87191 4.49669 4.18432 4.18427C4.49674 3.87185 5.00325 3.87185 5.31567 4.18427L11.9999 10.8685L18.6843 4.18427Z" fill="white"/></svg>
+      </button>
+    </div>
+    <!-- Bottom CTA bar -->
+    <div class="placement-cta-bar">
+      <div class="placement-cta-info-wrap">
+        <div class="placement-cta-thumb">
+          <img src="/assets/e8bef99b-7e40-4179-b90f-bf6b527e87fa.jpg" alt="thumb" id="placementCtaImg">
+        </div>
+        <div class="placement-cta-text">
+          <div class="placement-cta-name" id="placementCtaName">까르엠가구 파로마 포미 아쿠아텍스</div>
+          <div class="placement-cta-price">
+            <span id="placementCtaPrice">199,000</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+      </div>
+      <button class="placement-cta-btn" onclick="closePlacement()">적용하고 돌아가기</button>
+    </div>
+    <div class="placement-home-indicator"><div></div></div>
+  </div>
+
+  <!-- SCREEN: Camera -->
+  <div class="screen" id="screen-camera" style="background:#000">
+    <div class="camera-view">
+      <img src="/assets/b9f47321-a8e2-4df9-bcd8-0c756b7735d4.jpg" alt="Camera view">
+    </div>
+    <div class="camera-top">
+      <button onclick="closeCameraRetry()" style="font-size:20px">&#8635;</button>
+      <button onclick="closeCamera()" style="font-size:22px">&#10005;</button>
+    </div>
+    <div class="camera-bottom-text">사진을 촬영하거나 업로드해<br>방에 맞는 상품을 추천받아보세요</div>
+    <div class="camera-gallery">
+      <img src="/assets/b9f47321-a8e2-4df9-bcd8-0c756b7735d4.jpg" alt="gallery">
+    </div>
+    <div class="camera-bottom">
+      <button class="camera-shutter" onclick="takePhoto()"></button>
+    </div>
+    <div class="home-indicator" style="background:#fff"></div>
+  </div>
+
+  <!-- ===== Drawer overlay + panel ===== -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+  <div class="drawer" id="drawer">
+    <div class="drawer-header">
+      <button class="drawer-new-chat" onclick="closeDrawer()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3.04986C12.4418 3.04986 12.8 3.40804 12.8 3.84986C12.8 4.29168 12.4418 4.64985 12 4.64986H7.92509C6.63473 4.64986 5.86424 4.94817 5.4059 5.40703C4.94739 5.86607 4.65034 6.63686 4.65033 7.92486V16.0749C4.65033 16.0771 4.65031 16.0794 4.65029 16.0817C4.63933 17.3645 4.93601 18.1262 5.39443 18.5812C5.8564 19.0396 6.63472 19.3382 7.92768 19.3498H16.072C17.365 19.3382 18.1434 19.0396 18.6055 18.5812C19.0639 18.1262 19.3607 17.3645 19.3497 16.0817V11.9999C19.3497 11.558 19.7078 11.1999 20.1497 11.1999C20.5915 11.1999 20.9496 11.558 20.9497 11.9999V16.068L20.95 16.1384C20.9516 17.6128 20.605 18.8511 19.7325 19.7169C18.8502 20.5924 17.5804 20.9371 16.0816 20.9498H7.9249C6.41938 20.9371 5.14963 20.5924 4.26738 19.7168C3.3811 18.8373 3.03748 17.5734 3.05033 16.068V7.92486C3.05034 6.42441 3.39355 5.15765 4.27387 4.27632C5.15437 3.39481 6.42135 3.04986 7.92509 3.04986H12Z" fill="#141414"/><path fill-rule="evenodd" clip-rule="evenodd" d="M17.7863 2.64483C18.6845 1.74665 20.1408 1.74665 21.039 2.64483L21.3219 2.92769C22.2201 3.82589 22.2201 5.28217 21.3219 6.18037L13.8951 13.6071C13.6982 13.804 13.4311 13.9146 13.1527 13.9146L11.3523 13.9147L11.3187 13.9143C10.6274 13.8968 10.0703 13.3397 10.0527 12.6484L10.0522 12.6148L10.052 10.8141C10.052 10.5356 10.1627 10.2685 10.3596 10.0716L17.7863 2.64483ZM11.652 11.0418L11.6522 12.3147L12.9248 12.3147L18.557 6.68252L17.2842 5.40972L11.652 11.0418ZM19.9077 3.77622C19.6343 3.50287 19.191 3.50287 18.9177 3.77622L18.4156 4.27832L19.6884 5.55113L20.1905 5.04903C20.4638 4.77566 20.4638 4.3324 20.1905 4.05904L19.9077 3.77622Z" fill="#141414"/></svg>
+        새 채팅
+      </button>
+      <button class="drawer-close" onclick="closeDrawer()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M18.6843 4.18427C18.9967 3.87185 19.5032 3.87185 19.8157 4.18427C20.1281 4.49669 20.1281 5.0032 19.8157 5.31561L13.1313 11.9999L19.8157 18.6843C20.128 18.9533 20.1281 19.4599 19.8157 19.7723C19.5032 20.0847 18.9967 20.0847 18.6843 19.7723L12 13.1313L5.31567 19.8156C5.00325 20.1281 4.49674 20.1281 4.18432 19.8156C3.87192 19.5032 3.87191 18.9967 4.18432 18.6843L10.8686 11.9999L4.18432 5.31561C3.87192 5.0032 3.87191 4.49669 4.18432 4.18427C4.49674 3.87185 5.00325 3.87185 5.31567 4.18427L11.9999 10.8685L18.6843 4.18427Z" fill="#141414"/></svg></button>
+    </div>
+    <div class="drawer-divider"></div>
+    <div class="drawer-section-title">채팅 내역</div>
+    <div class="drawer-items">
+      <div class="drawer-item" onclick="closeDrawer()">12평대 화이트 인테리어에 맞는 소파</div>
+      <div class="drawer-item" onclick="closeDrawer()">너비 800이상 1200 이하 책상 찾아줘</div>
+      <div class="drawer-item" onclick="closeDrawer()">원목 수납장 추천</div>
+      <div class="drawer-item" onclick="closeDrawer()">거실 조명 추천해줘</div>
+      <div class="drawer-item" onclick="closeDrawer()">20평대 모던 인테리어</div>
+    </div>
+  </div>
+
+  <!-- Plus Bottom Sheet -->
+  <div class="plus-sheet-overlay" id="plusSheetOverlay" onclick="closePlusSheet()"></div>
+  <div class="plus-sheet" id="plusSheet">
+    <div class="plus-sheet-handle"><div></div></div>
+    <div class="plus-sheet-header"><a onclick="closePlusSheet()">모든 사진</a></div>
+    <div class="plus-sheet-photos">
+      <div class="plus-sheet-photo plus-sheet-camera" onclick="closePlusSheet();handlePhotoRecommendation()">
+        <img src="/assets/f93e4f53-d205-43a8-88bf-ed0e74c4c545.svg" alt="camera" style="width:32px;height:32px;object-fit:contain">
+        <span class="plus-sheet-camera-text">촬영하기</span>
+      </div>
+      <div class="plus-sheet-photo"><img src="/assets/720df76b-58b6-48bc-968c-5696dcfe3431.jpg" alt="photo1"></div>
+      <div class="plus-sheet-photo"><img src="/assets/170b01c1-fbfd-4355-9bf4-39ecce4400d4.jpg" alt="photo2"></div>
+      <div class="plus-sheet-photo"><img src="/assets/81739ffc-9db2-4c29-adbc-146990dadf85.jpg" alt="photo3"></div>
+    </div>
+    <div class="plus-sheet-divider"></div>
+    <div class="plus-sheet-action" onclick="closePlusSheet();handlePhotoRecommendation()">
+      <div class="plus-sheet-action-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M13.6533 10.3C13.8676 10.3 14.0493 10.4546 14.0968 10.6636C14.4785 12.3423 15.3577 13.2224 17.0356 13.6051C17.2451 13.6529 17.3999 13.8351 17.4 14.0499C17.3999 14.2648 17.2451 14.4469 17.0356 14.4946C15.3577 14.8774 14.4785 15.7577 14.0968 17.4363C14.0493 17.6454 13.8676 17.8 13.6533 17.8C13.4389 17.8 13.2572 17.6454 13.2097 17.4363C12.8274 15.7551 11.9462 14.8747 10.2632 14.4929C10.0544 14.4455 9.89996 14.264 9.89995 14.0499C9.89996 13.8358 10.0544 13.6543 10.2632 13.6069C11.9462 13.2251 12.8274 12.3448 13.2097 10.6636C13.2572 10.4546 13.4389 10.3 13.6533 10.3Z" fill="#141414"/><path d="M9.12661 8.04996C9.23378 8.04997 9.32461 8.12726 9.34839 8.23175C9.53924 9.07109 9.97881 9.51117 10.8178 9.70255C10.9225 9.72644 10.9999 9.81751 11 9.92491C10.9999 10.0323 10.9225 10.1234 10.8178 10.1473C9.97881 10.3387 9.53924 10.7788 9.34839 11.6182C9.32462 11.7227 9.23378 11.8 9.12661 11.8C9.01944 11.8 8.92861 11.7227 8.90483 11.6182C8.71369 10.7776 8.27306 10.3373 7.43159 10.1464C7.32719 10.1227 7.24995 10.032 7.24995 9.92491C7.24997 9.81787 7.3272 9.72712 7.43159 9.70343C8.27305 9.51252 8.71369 9.07237 8.90483 8.23175C8.92862 8.12726 9.01944 8.04996 9.12661 8.04996Z" fill="#141414"/><path fill-rule="evenodd" clip-rule="evenodd" d="M10.3626 2.92653C11.3616 2.29109 12.6383 2.29109 13.6373 2.92653L19.6373 6.74298L19.6783 6.7695C20.5336 7.33288 21.0499 8.28905 21.05 9.31534V14.0062L21.0489 14.2562V14.2578L21.0489 14.2594C21.0278 16.8578 20.6843 18.799 19.4056 20.0249C18.2671 21.1164 16.5549 21.4766 14.3 21.5393V21.55H10.5C7.80575 21.55 5.80133 21.2328 4.53442 19.9665C3.28719 18.7198 2.96011 16.7587 2.9502 14.1288L2.94995 14.0031V9.31534C2.94997 8.27277 3.48287 7.30256 4.3626 6.74298L10.3626 2.92653ZM12.7786 4.27658C12.3035 3.97443 11.6964 3.97443 11.2213 4.27658L5.22134 8.09303C4.8031 8.35907 4.54996 8.82013 4.54995 9.31534V14.0031L4.5502 14.1289C4.56121 16.7502 4.91941 18.0891 5.66553 18.8348C6.42363 19.5925 7.7942 19.95 10.5 19.95H12.7V19.9498H13.5C16.1622 19.9498 17.5328 19.6039 18.2983 18.8699C19.0543 18.1451 19.4276 16.8386 19.4489 14.2497L19.45 14.0029V9.31534C19.4499 8.82012 19.1968 8.35902 18.7786 8.09298L12.7786 4.27658Z" fill="#141414"/></svg>
+      </div>
+      <div class="plus-sheet-action-text">
+        <span class="plus-sheet-action-title">방 사진 촬영하고 상품 추천받기</span>
+        <span class="plus-sheet-action-desc">내 방을 찍으면 어울리는 상품을 바로 추천해드려요.</span>
+      </div>
+    </div>
+    <div class="plus-sheet-safe"></div>
+  </div>
+
+  <!-- Product Selection Bottom Sheet (조합 상품 변경) -->
+  <div class="psheet-overlay" id="psheetOverlay" onclick="closeProductSheet()"></div>
+  <div class="psheet" id="psheet">
+    <div class="psheet-handle"><div></div></div>
+    <div class="psheet-header">
+      <span class="psheet-title">상품 선택</span>
+      <button class="psheet-close" onclick="closeProductSheet()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M18.6843 4.18427C18.9967 3.87185 19.5032 3.87185 19.8157 4.18427C20.1281 4.49669 20.1281 5.0032 19.8157 5.31561L13.1313 11.9999L19.8157 18.6843C20.128 18.9533 20.1281 19.4599 19.8157 19.7723C19.5032 20.0847 18.9967 20.0847 18.6843 19.7723L12 13.1313L5.31567 19.8156C5.00325 20.1281 4.49674 20.1281 4.18432 19.8156C3.87192 19.5032 3.87191 18.9967 4.18432 18.6843L10.8686 11.9999L4.18432 5.31561C3.87192 5.0032 3.87191 4.49669 4.18432 4.18427C4.49674 3.87185 5.00325 3.87185 5.31567 4.18427L11.9999 10.8685L18.6843 4.18427Z" fill="currentColor"/></svg>
+      </button>
+    </div>
+    <div class="psheet-body">
+      <div class="psheet-info">✔️ 각 카테고리에서 1개씩 선택할 수 있어요</div>
+      <div class="psheet-section-title">러그</div>
+      <div class="psheet-grid" id="psheetRugs"></div>
+      <div class="psheet-divider"></div>
+      <div class="psheet-section-title">오브제</div>
+      <div class="psheet-grid" id="psheetObjets"></div>
+    </div>
+    <div class="psheet-footer">
+      <button class="psheet-btn-cancel" onclick="closeProductSheet()">취소</button>
+      <button class="psheet-btn-confirm" id="psheetConfirm" onclick="confirmProductSheet()">합성하기</button>
+    </div>
+  </div>
+
+  <div class="home-indicator"></div>
+</div>
+
+<script>
+// === Data ===
+const PRODUCTS_1 = [
+  { img:'/assets/624b6928-a5d7-4c67-b751-3a90a211d5e2.jpg', brand:'오트밀하우스', name:'파로마 포미 아쿠아텍스 3인용 소파', price:'199,000', dims:'168x69x77 cm' },
+  { img:'/assets/e3192201-3622-4580-abb5-ec04fd948e0b.jpg', brand:'까르엠가구', name:'파로마 포미 아쿠아텍스 3인용 소파', price:'199,000', dims:'195x80x86 cm' },
+  { img:'/assets/d2726350-daee-4301-942c-aa573e71eeab.jpg', brand:'가구밸리', name:'파로마 포미 아쿠아텍스 3인용 소파', price:'199,000', dims:'189x69x80 cm' },
+];
+const PRODUCTS_2 = [
+  { img:'/assets/d6b5ab56-fa83-4525-9f19-a4fe2cf60f58.jpg', brand:'', name:'파로마 포미 아쿠아텍스 3인용 소파', price:'199,000', dims:'92x88x141 cm' },
+  { img:'/assets/fbd0b819-94ff-46a6-a368-ec3b576bcac8.jpg', brand:'', name:'파로마 포미 아쿠아텍스 3인용 소파', price:'199,000', dims:'103x60x65 cm' },
+  { img:'/assets/22b6bbca-350c-4196-ba65-fe879ec5aaa2.jpg', brand:'', name:'파로마 포미 아쿠아텍스 3인용 소파', price:'199,000', dims:'125x70x80 cm' },
+];
+const THUMBS = [
+  { img:'/assets/30f6fda8-9cab-45c9-9835-94cf1d4f7ac9.jpg', name:'오트밀하우스', price:'199,000' },
+  { img:'/assets/2b059910-cab4-4432-8fd2-217a9fe1bb5a.jpg', name:'까르엠가구', price:'270,000' },
+  { img:'/assets/119e156c-89d1-48f8-b78d-b93177484df4.jpg', name:'가구밸리', price:'199,000' },
+  { img:'/assets/0aa2cfcc-c913-44f8-89d3-cef800c98659.jpg', name:'아이와비', price:'199,000' },
+  { img:'/assets/63e4bfa3-f08a-435e-a9da-fe77f280b41e.jpg', name:'한샘', price:'199,000' },
+  { img:'/assets/d973bed8-1419-473e-bd55-f61e1d80b690.jpg', name:'한샘', price:'199,000' },
+];
+const LIST_THUMBS = [
+  { img:'/assets/5b6e1f36-58cd-4887-a171-c4a9b4dabd44.jpg', name:'쿠이디자인 올리 조각상 COOEE OL...', discount:'28%', price:'139,000' },
+  { img:'/assets/b781e5a0-237d-4592-b9dd-132c4ad9a4b9.jpg', name:'[10%쿠폰] 슬러브 이지케어 워셔블...', discount:'38%', price:'9,900' },
+  { img:'/assets/7f5460b1-db13-494f-aa0e-f371de00f66a.jpg', name:'칼한센앤선 MG501 쿠바 체어...', discount:'25%', price:'1,140,000' },
+  { img:'/assets/9763d78f-81e7-4604-a86c-1f7707ae55f4.jpg', name:'몬타나 Panton wire 3colors', discount:'28%', price:'271,000' },
+  { img:'/assets/a547a217-b61d-4e94-8c02-49941051f360.jpg', name:'아카이브 160cm 멀티수납장...', discount:'4%', price:'709,000' },
+  { img:'/assets/7ccc6c0a-fdd2-4355-9077-ca62271f993e.jpg', name:'FLENSTED MOBILES - Drifting...', discount:'12%', price:'172,050' },
+];
+
+const SOFA_AI_TEXT = `12평대 화이트 인테리어면 소파가 공간분위기를 70%를 좌우해서 '톤 + 형태 + 다리 디자인'까지 고려해야해요
+
+조건에 맞는 스타일 추천드릴게요.`;
+
+const FOLLOWUPS = [
+  '미니멀 / 코지 / 호텔 / 북유럽 중 어떤 느낌?',
+  'TV가 있는 거실인가요?',
+  '인테리어 고수들 TOP5 보여줘',
+];
+
+// === State ===
+let currentScreen = 'entry';
+let sofaChatLoaded = false;
+
+// === Navigation ===
+function switchScreen(from, to, fromClass, toClass) {
+  const fromEl = document.getElementById('screen-' + from);
+  const toEl = document.getElementById('screen-' + to);
+  fromEl.classList.remove('active');
+  fromEl.classList.add(fromClass);
+  toEl.classList.remove('slide-left','slide-right','slide-up','slide-down');
+  toEl.classList.add('active');
+  currentScreen = to;
+}
+
+function goToChat() {
+  switchScreen(currentScreen, 'chat', 'slide-left', '');
+}
+function goToEntry() {
+  switchScreen('chat', 'entry', 'slide-right', '');
+  currentScreen = 'entry';
+}
+function goToPlacement() {
+  const chatEl = document.getElementById('screen-chat');
+  const placeEl = document.getElementById('screen-placement');
+  placeEl.classList.remove('slide-down','slide-up','slide-left','slide-right');
+  placeEl.classList.add('active');
+  currentScreen = 'placement';
+}
+function closePlacement() {
+  const placeEl = document.getElementById('screen-placement');
+  placeEl.classList.remove('active');
+  placeEl.classList.add('slide-down');
+  // 숨겼던 screen들 display 복원
+  document.querySelectorAll('.screen').forEach(s => { s.style.display = ''; });
+  document.querySelectorAll('.phone > .home-indicator').forEach(h => h.style.display = '');
+  currentScreen = 'chat';
+  document.getElementById('screen-chat').classList.add('active');
+}
+function goTo3D() {
+  switchScreen(currentScreen, '3d', 'slide-left', '');
+}
+function goToChatFromEntry() {
+  switchScreen('3d', 'chat', 'slide-left', '');
+  setTimeout(() => loadSofaChat(), 350);
+}
+
+// Entry keyboard
+const entryInput = document.getElementById('entryInputField');
+const entryInputKb = document.getElementById('entryInputKb');
+let plusSheetOpen = false;
+if (entryInput) {
+  setTimeout(() => entryInput.focus(), 300);
+
+  entryInput.addEventListener('focus', () => {
+    entryInputKb.classList.add('kb-open');
+  });
+  entryInput.addEventListener('blur', () => {
+    // 바텀시트 열릴 때는 키보드 유지
+    if (plusSheetOpen) return;
+    setTimeout(() => {
+      entryInputKb.classList.remove('kb-open');
+    }, 100);
+  });
+}
+function goToChat() {
+  if (currentScreen === '3d') {
+    switchScreen('3d', 'chat', 'slide-right', '');
+  } else {
+    switchScreen(currentScreen, 'chat', 'slide-left', '');
+  }
+}
+
+// === Drawer ===
+function openDrawer() {
+  document.getElementById('drawerOverlay').classList.add('active');
+  document.getElementById('drawer').classList.add('active');
+}
+function closeDrawer() {
+  document.getElementById('drawerOverlay').classList.remove('active');
+  document.getElementById('drawer').classList.remove('active');
+}
+function forceCloseAllOverlays() {
+  document.getElementById('drawerOverlay').classList.remove('active');
+  document.getElementById('drawer').classList.remove('active');
+  document.getElementById('drawerOverlay').style.display = 'none';
+  document.getElementById('drawer').style.display = 'none';
+  document.getElementById('plusSheetOverlay').classList.remove('active');
+  document.getElementById('plusSheet').classList.remove('active');
+  document.getElementById('plusSheetOverlay').style.display = 'none';
+  document.getElementById('plusSheet').style.display = 'none';
+  setTimeout(() => {
+    document.getElementById('drawerOverlay').style.display = '';
+    document.getElementById('drawer').style.display = '';
+    document.getElementById('plusSheetOverlay').style.display = '';
+    document.getElementById('plusSheet').style.display = '';
+  }, 500);
+}
+function openPlusSheet() {
+  plusSheetOpen = true;
+  document.getElementById('plusSheetOverlay').classList.add('active');
+  document.getElementById('plusSheet').classList.add('active');
+}
+function closePlusSheet() {
+  plusSheetOpen = false;
+  document.getElementById('plusSheetOverlay').classList.remove('active');
+  document.getElementById('plusSheet').classList.remove('active');
+  // 포커스 복원
+  if (entryInput && currentScreen === 'entry') {
+    setTimeout(() => entryInput.focus(), 100);
+  }
+}
+
+// === Chat ===
+const chatBody = document.getElementById('chatBody');
+const chatInput = document.getElementById('chatInput');
+const chatSend = document.getElementById('chatSend');
+const scrollDownBtn = document.getElementById('scrollDownBtn');
+
+chatInput.addEventListener('input', () => {
+  chatSend.classList.toggle('visible', chatInput.value.trim().length > 0);
+});
+
+chatBody.addEventListener('scroll', () => {
+  const atBottom = chatBody.scrollHeight - chatBody.scrollTop - chatBody.clientHeight < 60;
+  scrollDownBtn.classList.toggle('visible', !atBottom);
+});
+
+function scrollToBottom() {
+  chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: 'smooth' });
+}
+
+function addUserBubble(text) {
+  const div = document.createElement('div');
+  div.className = 'msg-user';
+  div.innerHTML = `<div class="msg-user-bubble">${escHtml(text)}</div>`;
+  chatBody.appendChild(div);
+  scrollToBottom();
+}
+
+function addTypingIndicator() {
+  const div = document.createElement('div');
+  div.className = 'msg-ai';
+  div.id = 'typingIndicator';
+  div.innerHTML = `<div class="msg-ai-icon"><img src="/assets/be2eccd9-a7a8-4b72-a06b-5cd44d00dd25.svg" alt="AI"></div><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  chatBody.appendChild(div);
+  scrollToBottom();
+}
+
+function removeTypingIndicator() {
+  const el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function typeText(container, text, speed = 25) {
+  return new Promise(resolve => {
+    let i = 0;
+    function tick() {
+      if (i < text.length) {
+        container.textContent += text[i];
+        i++;
+        scrollToBottom();
+        setTimeout(tick, speed);
+      } else { resolve(); }
+    }
+    tick();
+  });
+}
+
+function createProductCards(products) {
+  const wrap = document.createElement('div');
+  wrap.className = 'product-scroll';
+  products.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    card.innerHTML = `
+      <div class="product-card-img">
+        <img src="${p.img}" alt="${p.name}">
+        <div class="product-card-bookmark" onclick="event.stopPropagation();this.classList.toggle('filled')">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M15.5 3C16.8058 3 17.9293 3.298 18.7157 4.084C19.5021 4.871 19.8 5.994 19.8 7.3V19.694C19.8 20.242 19.5446 20.743 19.1101 21.039C18.666 21.342 18.0876 21.392 17.5632 21.133L12 18.034L6.472 21.114C5.912 21.392 5.334 21.342 4.89 21.039C4.455 20.743 4.2 20.242 4.2 19.694V7.3C4.2 5.994 4.498 4.871 5.284 4.084C6.071 3.298 7.194 3 8.5 3H15.5Z" fill="white" stroke="white" stroke-width="0.5"/></svg>
+        </div>
+      </div>
+      <button class="product-card-place" onclick="openPlacement()">배치하기</button>
+      <div class="product-card-brand">${p.brand}</div>
+      <div class="product-card-name">${p.name}</div>
+      <div class="product-card-price">${p.price}</div>
+      <div class="product-card-dims">${p.dims}</div>`;
+    wrap.appendChild(card);
+  });
+  return wrap;
+}
+
+function createFollowups() {
+  const wrap = document.createElement('div');
+  FOLLOWUPS.forEach((text, i) => {
+    if (i > 0) {
+      const d = document.createElement('div');
+      d.className = 'chat-divider';
+      wrap.appendChild(d);
+    }
+    const fu = document.createElement('div');
+    fu.className = 'followup';
+    fu.innerHTML = `<div class="followup-icon"><img src="/assets/arrow-reply.svg" alt="reply"></div><div class="followup-text">${text}</div>`;
+    fu.onclick = () => handleFollowupClick(text);
+    wrap.appendChild(fu);
+  });
+  return wrap;
+}
+
+async function loadSofaChat() {
+  if (sofaChatLoaded) return;
+  sofaChatLoaded = true;
+
+  addUserBubble('12평대 화이트 인테리어에 맞는 소파');
+
+  addTypingIndicator();
+  await new Promise(r => setTimeout(r, 1500));
+  removeTypingIndicator();
+
+  // AI text with typing animation
+  const aiMsg = document.createElement('div');
+  aiMsg.className = 'msg-ai';
+  aiMsg.innerHTML = `<div class="msg-ai-icon"><img src="/assets/be2eccd9-a7a8-4b72-a06b-5cd44d00dd25.svg" alt="AI"></div><div class="msg-ai-text" id="aiTextTyping"></div>`;
+  chatBody.appendChild(aiMsg);
+  await typeText(document.getElementById('aiTextTyping'), SOFA_AI_TEXT, 20);
+
+  // Divider + section titles + products
+  appendDivider();
+  appendHtml('<div class="chat-section-title">12평대 화이트 인테리어\nBest 소파 스타일</div>');
+  appendHtml('<div class="chat-item-title">1. 크림화이트 미니멀 소파(강추)</div>');
+  appendHtml('<div class="chat-item-body">• 화이트 인테리어랑 가장 실패 없는 조합\n• 차가운 화이트보다 크림톤 공간이 따뜻해보임</div>');
+  appendHtml('<div class="chat-item-body">📍특징\n• 낮은 등받이\n• 직선형 디자인\n• 얇은 다리 or 플로팅 디자인</div>');
+  appendHtml('<div class="chat-item-body">📌 크림화이트 소파가 12평대 트렌드 컬러로 많이 쓰여요.</div>');
+  appendHtml('<div class="chat-item-body">추천 상품 :</div>');
+  chatBody.appendChild(createProductCards(PRODUCTS_1));
+
+  appendDivider();
+  appendHtml('<div class="chat-item-title">2. 공간 넓어 보이는 - 로우형 모듈 소파</div>');
+  appendHtml('<div class="chat-item-body">• 천장 높아 보임\n• 거실 넓어 보이는 착시</div>');
+  appendHtml('<div class="chat-item-body">📍특징\n• 사이즈 조절 가능\n• 미니멀 인테리어랑 궁합좋음</div>');
+  appendHtml('<div class="chat-item-body">추천 상품 :</div>');
+  chatBody.appendChild(createProductCards(PRODUCTS_2));
+
+  appendDivider();
+  appendHtml('<div class="chat-item-body">혹은 스타일 조금 더 알려주시면\n딱맞는 상품으로 한번 더 추천해드릴게요</div>');
+  chatBody.appendChild(createFollowups());
+  scrollToBottom();
+}
+
+function appendDivider() {
+  const d = document.createElement('div');
+  d.className = 'chat-divider';
+  chatBody.appendChild(d);
+}
+function appendHtml(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html;
+  chatBody.appendChild(d.firstElementChild);
+}
+
+const API_BASE = window.location.origin + '/api';
+const API_USER_ID = '1234';
+let currentSessionId = null;
+let isAiResponding = false;
+
+// 상품 카드 데이터 풀 (Figma 에셋 기반)
+const PRODUCT_POOL = [
+  { img:'/assets/624b6928-a5d7-4c67-b751-3a90a211d5e2.jpg', brand:'오트밀하우스', name:'파로마 포미 아쿠아텍스 3인용 소파', price:'199,000', dims:'168x69x77 cm' },
+  { img:'/assets/e3192201-3622-4580-abb5-ec04fd948e0b.jpg', brand:'까르엠가구', name:'파로마 포미 아쿠아텍스 3인용 소파', price:'199,000', dims:'195x80x86 cm' },
+  { img:'/assets/d2726350-daee-4301-942c-aa573e71eeab.jpg', brand:'가구밸리', name:'파로마 포미 아쿠아텍스 3인용 소파', price:'199,000', dims:'189x69x80 cm' },
+  { img:'/assets/d6b5ab56-fa83-4525-9f19-a4fe2cf60f58.jpg', brand:'한샘', name:'로우 모듈 패브릭 소파', price:'299,000', dims:'92x88x141 cm' },
+  { img:'/assets/fbd0b819-94ff-46a6-a368-ec3b576bcac8.jpg', brand:'이케아', name:'컴팩트 패브릭 2인 소파', price:'189,000', dims:'103x60x65 cm' },
+  { img:'/assets/22b6bbca-350c-4196-ba65-fe879ec5aaa2.jpg', brand:'소프시스', name:'내추럴 린넨 3인 소파', price:'249,000', dims:'125x70x80 cm' },
+];
+let productPoolIdx = 0;
+
+function getNextProducts(count) {
+  const result = [];
+  for (let i = 0; i < count; i++) {
+    result.push(PRODUCT_POOL[productPoolIdx % PRODUCT_POOL.length]);
+    productPoolIdx++;
+  }
+  return result;
+}
+
+function markdownToHtml(md) {
+  // Remove system messages
+  let html = md.replace(/`confirm_search_result`[^\n]*/g, '');
+  html = html.replace(/`search_products`[^\n]*/g, '');
+  html = html.replace(/`set_session_title`[^\n]*/g, '');
+  // Replace product list tags with placeholder
+  html = html.replace(/<spaceai\.rp\.chat\.horizontalproductlist[^>]*><\/spaceai\.rp\.chat\.horizontalproductlist>/g, '{{PRODUCT_LIST}}');
+  // Bold (before headers so ** inside headers works)
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Horizontal rules
+  html = html.replace(/^---$/gm, '<hr>');
+  // Headers (must process ### before ## before #)
+  html = html.replace(/^### (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // Unordered list items: group consecutive "- " lines into <ul>
+  html = html.replace(/(^- .+$(\n^- .+$)*)/gm, function(match) {
+    const items = match.split('\n').map(l => '<li>' + l.replace(/^- /, '') + '</li>').join('');
+    return '<ul>' + items + '</ul>';
+  });
+  // Ordered list items: group consecutive "N. " lines into <ol>
+  html = html.replace(/(^\d+\. .+$(\n^\d+\. .+$)*)/gm, function(match) {
+    const items = match.split('\n').map(l => '<li>' + l.replace(/^\d+\. /, '') + '</li>').join('');
+    return '<ol>' + items + '</ol>';
+  });
+  // Collapse multiple blank lines
+  html = html.replace(/\n{3,}/g, '\n\n');
+  // Ensure {{PRODUCT_LIST}} is on its own line
+  html = html.replace(/\{\{PRODUCT_LIST\}\}/g, '\n\n{{PRODUCT_LIST}}\n\n');
+  // Collapse multiple blank lines again
+  html = html.replace(/\n{3,}/g, '\n\n');
+  // Paragraphs: wrap remaining text blocks in <p>
+  html = html.split('\n\n').map(block => {
+    block = block.trim();
+    if (!block) return '';
+    if (block === '{{PRODUCT_LIST}}') return block;
+    if (block.startsWith('<h1') || block.startsWith('<h2') || block.startsWith('<hr') ||
+        block.startsWith('<ul') || block.startsWith('<ol')) return block;
+    return '<p>' + block.replace(/\n/g, '<br>') + '</p>';
+  }).join('');
+  return html;
+}
+
+function renderAiContent(container, htmlContent) {
+  const marker = '{{PRODUCT_LIST}}';
+  const parts = htmlContent.split(marker);
+  parts.forEach((part, i) => {
+    if (part.trim()) {
+      const textDiv = document.createElement('div');
+      textDiv.innerHTML = part;
+      container.appendChild(textDiv);
+    }
+    if (i < parts.length - 1) {
+      container.appendChild(createProductCards(getNextProducts(3)));
+    }
+  });
+}
+
+async function sendGenericResponse(userText) {
+  if (isAiResponding) return;
+  isAiResponding = true;
+
+  addUserBubble(userText);
+  addTypingIndicator();
+
+  try {
+    // 1. Send message
+    const body = { space_id: 'test-space', message: userText };
+    if (currentSessionId) body.session_id = currentSessionId;
+
+    const createRes = await fetch(API_BASE + '/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'ohouse-user-id': API_USER_ID },
+      body: JSON.stringify(body)
+    });
+    const createData = await createRes.json();
+    currentSessionId = createData.session_id;
+    const turnId = createData.turn_id;
+
+    // 2. Poll for completion
+    let turnData = null;
+    for (let i = 0; i < 60; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      const turnRes = await fetch(API_BASE + '/v1/sessions/' + currentSessionId + '/turns/' + turnId, {
+        headers: { 'ohouse-user-id': API_USER_ID }
+      });
+      turnData = await turnRes.json();
+      if (turnData.status === 'COMPLETED' || turnData.status === 'FAILED') break;
+    }
+
+    removeTypingIndicator();
+
+    if (turnData && turnData.status === 'COMPLETED' && turnData.messages) {
+      // Find the first ASSISTANT message (avoid duplicates)
+      const assistantMsgs = turnData.messages.filter(m => m.role === 'ASSISTANT');
+      if (assistantMsgs.length > 0) {
+        const aiContent = assistantMsgs[0].content;
+        const aiMsg = document.createElement('div');
+        aiMsg.className = 'msg-ai';
+        const textEl = document.createElement('div');
+        textEl.className = 'msg-ai-text';
+        aiMsg.innerHTML = '<div class="msg-ai-icon"><img src="/assets/be2eccd9-a7a8-4b72-a06b-5cd44d00dd25.svg" alt="AI"></div>';
+        aiMsg.appendChild(textEl);
+        chatBody.appendChild(aiMsg);
+        // 마크다운 변환 + 상품 카드 렌더링
+        const htmlContent = markdownToHtml(aiContent);
+        productPoolIdx = 0;
+        renderAiContent(textEl, htmlContent);
+        scrollToBottom();
+      }
+    } else {
+      showAiError('응답을 가져오지 못했어요. 다시 시도해 주세요.');
+    }
+  } catch (err) {
+    removeTypingIndicator();
+    showAiError('API 연결에 실패했어요: ' + err.message);
+  }
+
+  isAiResponding = false;
+}
+
+function showAiError(text) {
+  const aiMsg = document.createElement('div');
+  aiMsg.className = 'msg-ai';
+  aiMsg.innerHTML = '<div class="msg-ai-icon"><img src="/assets/be2eccd9-a7a8-4b72-a06b-5cd44d00dd25.svg" alt="AI"></div><div class="msg-ai-text" style="color:#e74c3c">' + text + '</div>';
+  chatBody.appendChild(aiMsg);
+  scrollToBottom();
+}
+
+function sendChatMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  chatInput.value = '';
+  chatSend.classList.remove('visible');
+
+  // If there's a pending photo, do photo analysis flow
+  if (pendingPhotoUrl) {
+    const photoUrl = pendingPhotoUrl;
+    pendingPhotoUrl = null;
+    // Reset input field to normal state
+    document.querySelector('.chat-bottom').classList.remove('has-photo');
+    document.getElementById('chatInputThumb').innerHTML = '';
+    // Show photo + user message in chat, then analyze
+    continuePhotoAnalysis(photoUrl);
+    return;
+  }
+
+  sendGenericResponse(text);
+}
+
+function handleSofaChip() {
+  switchScreen('entry', 'chat', 'slide-left', '');
+  setTimeout(() => loadSofaChat(), 350);
+}
+
+function handleChipClick(text) {
+  switchScreen('entry', 'chat', 'slide-left', '');
+  setTimeout(() => sendGenericResponse(text), 350);
+}
+
+function handleFollowupClick(text) {
+  sendGenericResponse(text);
+}
+
+// === Placement ===
+function openPlacement(product) {
+  forceCloseAllOverlays();
+  // 다른 모든 screen 강제로 숨김 (placement만 보이도록)
+  document.querySelectorAll('.screen').forEach(s => {
+    if (s.id !== 'screen-placement') {
+      s.classList.remove('active');
+      s.style.display = 'none';
+    }
+  });
+  // 글로벌 home indicator 숨김 (placement는 자체 흰색 indicator 사용)
+  document.querySelectorAll('.phone > .home-indicator').forEach(h => h.style.display = 'none');
+  // 진입점별로 CTA 상품 정보 변경
+  if (product) {
+    const ctaImg = document.getElementById('placementCtaImg');
+    const ctaName = document.getElementById('placementCtaName');
+    const ctaPrice = document.getElementById('placementCtaPrice');
+    if (ctaImg) ctaImg.src = product.img;
+    if (ctaName) ctaName.textContent = (product.brand ? product.brand + ' ' : '') + product.name;
+    if (ctaPrice) ctaPrice.textContent = product.price + (product.price && !product.price.includes('원') ? '원' : '');
+  }
+  const placeEl = document.getElementById('screen-placement');
+  placeEl.classList.remove('slide-down','slide-up','slide-left','slide-right');
+  // 즉시 화면 전환 (애니메이션 없음)
+  placeEl.style.transition = 'none';
+  placeEl.style.transform = 'none';
+  placeEl.classList.add('active');
+  // 다음 프레임에 transition 복원
+  requestAnimationFrame(() => { placeEl.style.transition = ''; });
+  currentScreen = 'placement';
+}
+
+function initPlacementCarousel() {
+  const c = document.getElementById('placementCarousel');
+  // 항상 새로 그리기 (이전 children 제거)
+  c.innerHTML = '';
+  THUMBS.forEach((t, i) => {
+    const d = document.createElement('div');
+    d.className = 'placement-thumb' + (i === 1 ? ' active' : '');
+    d.innerHTML = '<div class="placement-thumb-img"><img src="' + t.img + '" alt="' + t.name + '"></div><div class="placement-thumb-label">' + t.name + '</div>';
+    d.onclick = () => selectPlacementThumb(i);
+    c.appendChild(d);
+  });
+}
+
+function selectPlacementThumb(idx) {
+  document.querySelectorAll('.placement-thumb').forEach((t, i) => {
+    t.classList.toggle('active', i === idx);
+  });
+  const t = THUMBS[idx];
+  document.getElementById('placementCtaImg').src = t.img;
+  document.getElementById('placementCtaName').textContent = t.name;
+  document.getElementById('placementCtaPrice').textContent = t.price;
+}
+
+// === 3D Sheet ===
+function switchSheetTab(btn, contentName) {
+  document.querySelectorAll('#sheetTabs .sheet-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  // Switch content
+  if (contentName) {
+    document.querySelectorAll('.sheet-tab-content').forEach(c => c.classList.remove('active'));
+    if (contentName === 'product') {
+      document.getElementById('sheetContentProduct').classList.add('active');
+    } else if (contentName === 'idea') {
+      document.getElementById('sheetContentIdea').classList.add('active');
+    }
+    // 'space' tab has no content yet
+  }
+}
+function handleProductCombo() {
+  // 임시: 기존 photo flow와 동일하게 동작 (추후 별도 플로우로 확장 가능)
+  handlePhotoRecommendation();
+}
+function switchSubtab(btn) {
+  document.querySelectorAll('#sheetSubtabs .sheet-subtab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function initSheetProducts() {
+  const list = document.getElementById('sheetProductList');
+  LIST_THUMBS.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'sheet-product-item';
+    item.innerHTML = `<div class="sheet-product-thumb"><img src="${p.img}" alt="${p.name}"></div><div class="sheet-product-info"><div class="sheet-product-name">${p.name}</div><div style="display:flex;gap:4px;align-items:center"><span style="color:var(--brand);font-size:15px;font-weight:700">${p.discount}</span><span class="sheet-product-price">${p.price}</span></div></div><button style="background:none;border:none;cursor:pointer;padding:0;flex-shrink:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M15.5 3C16.8058 3 17.9293 3.29786 18.7157 4.08428C19.5021 4.8707 19.8 5.99416 19.8 7.3V19.6944C19.8 20.2423 19.5446 20.743 19.1101 21.0391C18.666 21.3417 18.0876 21.3919 17.5632 21.1327L12 18.0343L6.47169 21.1144C5.91238 21.3919 5.33399 21.3417 4.8899 21.0391C4.45544 20.743 4.20003 20.2423 4.20001 19.6944V7.3C4.20001 5.99416 4.4979 4.8707 5.28434 4.08428C6.07077 3.29786 7.19423 3 8.50001 3H15.5ZM8.50001 4.6C7.40579 4.6 6.77925 4.85211 6.41569 5.21567C6.05213 5.57923 5.80001 6.20575 5.80001 7.3V19.657L11.6107 16.4197C11.8711 16.285 12.1549 16.2891 12.3894 16.4197L18.2 19.657V7.3C18.2 6.20575 17.9479 5.57923 17.5843 5.21567C17.2208 4.85211 16.5942 4.6 15.5 4.6H8.50001Z" fill="#8c8c8c"/></svg></button>`;
+    list.appendChild(item);
+  });
+}
+initSheetProducts();
+
+// === Camera & Photo Upload Flow ===
+function openCamera() {
+  forceCloseAllOverlays();
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active','slide-left','slide-right','slide-up','slide-down');
+  });
+  const camEl = document.getElementById('screen-camera');
+  camEl.classList.add('active');
+  camEl.style.transform = '';
+  currentScreen = 'camera';
+}
+
+function closeCamera() {
+  const camEl = document.getElementById('screen-camera');
+  camEl.classList.remove('active');
+  if (document.getElementById('screen-chat').classList.contains('active')) {
+    currentScreen = 'chat';
+  } else {
+    document.getElementById('screen-entry').classList.add('active');
+    currentScreen = 'entry';
+  }
+}
+
+function closeCameraRetry() {
+  // Just show the camera view again (simulated)
+}
+
+let pendingPhotoUrl = null;
+
+function takePhoto() {
+  forceCloseAllOverlays();
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active','slide-left','slide-right','slide-up','slide-down');
+  });
+  const chatEl = document.getElementById('screen-chat');
+  chatEl.classList.add('active');
+  currentScreen = 'chat';
+
+  chatBody.innerHTML = '';
+  showPhotoInInput();
+}
+
+function showPhotoInInput() {
+  pendingPhotoUrl = '/assets/b9f47321-a8e2-4df9-bcd8-0c756b7735d4.jpg';
+
+  // Expand input field with image inside
+  const chatBottom = document.querySelector('.chat-bottom');
+  chatBottom.classList.add('has-photo');
+
+  const thumb = document.getElementById('chatInputThumb');
+  thumb.innerHTML = '<img src="' + pendingPhotoUrl + '" alt="room"><div class="msg-upload-loader"></div>';
+  thumb.classList.remove('loaded');
+
+  // Simulate loading
+  setTimeout(() => {
+    thumb.classList.add('loaded');
+  }, 2000);
+
+  // Pre-fill the input text
+  chatInput.value = '공간에 어울리는 상품을 추천해주세요';
+  chatSend.classList.add('visible');
+  chatInput.focus();
+}
+
+// === Photo Room Recommendation Flow ===
+function handlePhotoRecommendation() {
+  openCamera();
+}
+
+// === Product Selection Sheet (조합 상품 변경) ===
+const PSHEET_RUGS = [
+  { img:'/assets/c3d4c42d-8f9c-4e4b-b4bc-71ea63290ffa.jpg', brand:'오트밀하우스', name:'파로마 포미 아쿠아텍스', price:'199,000' },
+  { img:'/assets/5eddcf76-9c49-40e0-b149-aa94b551ea37.jpg', brand:'오트밀하우스', name:'파로마 포미 아쿠아텍스', price:'199,000' },
+  { img:'/assets/25674132-b83e-4817-b1c2-70cc1832a5f5.jpg', brand:'오트밀하우스', name:'파로마 포미 아쿠아텍스', price:'199,000' },
+  { img:'/assets/b1644ee5-6a77-49aa-98eb-00c5d454a888.jpg', brand:'오트밀하우스', name:'파로마 포미 아쿠아텍스', price:'199,000' },
+];
+const PSHEET_OBJETS = [
+  { img:'/assets/f6f9fde1-3a7d-44f3-b88b-34d93ff2673b.jpg', brand:'오트밀하우스', name:'파로마 포미 아쿠아텍스', price:'199,000' },
+  { img:'/assets/bf9a79e4-ee90-4edc-a1e3-1a17d55e5112.jpg', brand:'오트밀하우스', name:'파로마 포미 아쿠아텍스', price:'199,000' },
+  { img:'/assets/8dcf8860-ce68-4f41-a46a-d51b3cc0eed5.jpg', brand:'오트밀하우스', name:'파로마 포미 아쿠아텍스', price:'199,000' },
+  { img:'/assets/d698992a-9bbf-4f10-8f77-83edf9690fb4.jpg', brand:'오트밀하우스', name:'파로마 포미 아쿠아텍스', price:'199,000' },
+];
+let psheetSelectedRug = 0;
+let psheetSelectedObjet = 0;
+
+function renderPsheetGrid(containerId, items, selectedIdx, onSelect) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  items.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'psheet-product' + (i === selectedIdx ? ' selected' : '');
+    el.innerHTML = `
+      <div class="psheet-product-img">
+        <img src="${p.img}" alt="${p.name}">
+        <div class="psheet-radio"></div>
+      </div>
+      <div class="psheet-product-name"><b>${p.brand}</b> ${p.name}</div>
+      <div class="psheet-product-price">${p.price}</div>`;
+    el.onclick = () => onSelect(i);
+    c.appendChild(el);
+  });
+}
+
+function refreshPsheet() {
+  renderPsheetGrid('psheetRugs', PSHEET_RUGS, psheetSelectedRug, (i) => { psheetSelectedRug = i; refreshPsheet(); });
+  renderPsheetGrid('psheetObjets', PSHEET_OBJETS, psheetSelectedObjet, (i) => { psheetSelectedObjet = i; refreshPsheet(); });
+}
+function openProductSheet() {
+  refreshPsheet();
+  document.getElementById('psheetOverlay').classList.add('active');
+  document.getElementById('psheet').classList.add('active');
+}
+function closeProductSheet() {
+  document.getElementById('psheetOverlay').classList.remove('active');
+  document.getElementById('psheet').classList.remove('active');
+}
+function confirmProductSheet() {
+  closeProductSheet();
+  // Re-render the result with new selection
+  setTimeout(() => regenerateCompositeResult(), 200);
+}
+
+function regenerateCompositeResult() {
+  const rug = Object.assign({}, PSHEET_RUGS[psheetSelectedRug], { type:'rug' });
+  const objet = Object.assign({}, PSHEET_OBJETS[psheetSelectedObjet], { type:'objet' });
+
+  // 1. 유저 메시지: 선택한 상품 썸네일 2개 (오른쪽 정렬)
+  const userMsg = document.createElement('div');
+  userMsg.className = 'msg-user-products';
+  userMsg.innerHTML = `
+    <div class="msg-user-product-thumb"><img src="${rug.img}" alt="${rug.name}"></div>
+    <div class="msg-user-product-thumb"><img src="${objet.img}" alt="${objet.name}"></div>`;
+  chatBody.appendChild(userMsg);
+
+  // 2. AI 응답: 새 합성 결과
+  const aiMsg = document.createElement('div');
+  aiMsg.className = 'msg-ai';
+  aiMsg.innerHTML = '<div class="msg-ai-icon"><img src="/assets/be2eccd9-a7a8-4b72-a06b-5cd44d00dd25.svg" alt="AI"></div>';
+  const text = document.createElement('div');
+  text.className = 'msg-ai-text';
+  text.innerHTML = '<p>선택한 상품을 방 사진과 합성했어요</p>';
+
+  // 합성 전/후 비교 카로셀 (이전 합성 결과 → 새 합성 결과)
+  const carousel = createCompositedCarousel([
+    '/assets/6b7e743b-9ae1-4031-b8f6-01a4ed867296.jpg',
+    '/assets/be3b420e-058a-4e3a-a915-a385c6f8af3f.jpg'
+  ]);
+  text.appendChild(carousel);
+
+  const title = document.createElement('div');
+  title.className = 'combined-products-title';
+  title.textContent = '이미지에 합성된 상품';
+  text.appendChild(title);
+
+  const cps = document.createElement('div');
+  cps.className = 'combined-products';
+  [rug, objet].forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'combined-product';
+    el.innerHTML = `
+      <div class="combined-product-img"><img src="${p.img}" alt="${p.name}"><button class="combined-product-bookmark" onclick="event.stopPropagation();this.classList.toggle('filled')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M15.5 3C16.8058 3 17.9293 3.298 18.7157 4.084C19.5021 4.871 19.8 5.994 19.8 7.3V19.694C19.8 20.242 19.5446 20.743 19.1101 21.039C18.666 21.342 18.0876 21.392 17.5632 21.133L12 18.034L6.472 21.114C5.912 21.392 5.334 21.342 4.89 21.039C4.455 20.743 4.2 20.242 4.2 19.694V7.3C4.2 5.994 4.498 4.871 5.284 4.084C6.071 3.298 7.194 3 8.5 3H15.5Z" fill="white" stroke="white" stroke-width="0.5"/></svg></button></div>
+      <button class="combined-product-place">배치하기</button>
+      <div class="combined-product-name"><b>${p.brand}</b> ${p.name}</div>
+      <div class="combined-product-price">${p.price}</div>`;
+    el.querySelector('.combined-product-place').onclick = () => openPlacement(p);
+    cps.appendChild(el);
+  });
+  text.appendChild(cps);
+
+  aiMsg.appendChild(text);
+  chatBody.appendChild(aiMsg);
+
+  // Divider + 후속 메시지 + 다른 추천 상품도 합성하기 followup
+  appendDivider();
+  appendHtml('<div class="chat-item-body">해당 스타일 마음에 드시나요?\n추가적인 상품 합성도 받아볼 수 있어요</div>');
+  const fu = document.createElement('div');
+  fu.className = 'followup';
+  fu.innerHTML = '<div class="followup-icon"><img src="/assets/arrow-reply.svg" alt="reply"></div><img class="followup-badge-icon" src="/assets/sparkles-house-filled.svg" alt=""><div class="followup-text">다른 추천 상품도 합성하기</div>';
+  fu.onclick = () => openProductSheet();
+  chatBody.appendChild(fu);
+
+  // 새 내용이 화면 최상단에 오도록 스크롤
+  setTimeout(() => {
+    chatBody.scrollTo({ top: userMsg.offsetTop - 12, behavior: 'smooth' });
+  }, 50);
+}
+
+async function continuePhotoAnalysis(roomImgUrl) {
+  // Step 1: Show room photo (right-aligned)
+  const photoDiv = document.createElement('div');
+  photoDiv.className = 'msg-room-photo';
+  photoDiv.innerHTML = '<img src="' + roomImgUrl + '" alt="방 사진">';
+  chatBody.appendChild(photoDiv);
+  scrollToBottom();
+  await new Promise(r => setTimeout(r, 400));
+
+  // Step 2: Show user bubble
+  addUserBubble('공간에 어울리는 상품을 추천해주세요');
+  await new Promise(r => setTimeout(r, 400));
+
+  // Step 3: Show sparkle icon + loading text
+  const loadingMsg = document.createElement('div');
+  loadingMsg.className = 'msg-ai';
+  loadingMsg.id = 'photoLoadingMsg';
+  loadingMsg.innerHTML = '<div class="msg-ai-icon"><img src="/assets/be2eccd9-a7a8-4b72-a06b-5cd44d00dd25.svg" alt="AI"></div><div class="msg-ai-text shimmer-text">공간을 분석하고 있어요. 조금만 기다려주세요</div>';
+  chatBody.appendChild(loadingMsg);
+  scrollToBottom();
+
+  // Step 4: Wait 3 seconds (simulating analysis)
+  await new Promise(r => setTimeout(r, 3000));
+
+  // Step 5: Replace loading with analysis result
+  loadingMsg.remove();
+
+  const aiMsg = document.createElement('div');
+  aiMsg.className = 'msg-ai';
+  const aiIcon = document.createElement('div');
+  aiIcon.className = 'msg-ai-icon';
+  aiIcon.innerHTML = '<img src="/assets/be2eccd9-a7a8-4b72-a06b-5cd44d00dd25.svg" alt="AI">';
+  aiMsg.appendChild(aiIcon);
+
+  const aiText = document.createElement('div');
+  aiText.className = 'msg-ai-text';
+  aiText.innerHTML =
+    '<p>공간에 어울리는 상품을 추가해 방 사진과 합성하고 관련 상품을 추천해드릴게요</p>' +
+    '<hr>' +
+    '<h1>코지하고 포근한 취향의 공간</h1>' +
+    '<p>따뜻하고 깔끔한 웜 화이트+원목 내추럴 북유럽 스타일지만 포인트 컬러와 텍스처 오브제 부재로 단조로운 편이에요</p>';
+
+  // 첫 합성 결과 — 단일 이미지 (캐로셀/인디케이터 없음, Figma 1431:5840)
+  const compImg = document.createElement('div');
+  compImg.className = 'composited-img';
+  compImg.innerHTML = '<img src="/assets/6b7e743b-9ae1-4031-b8f6-01a4ed867296.jpg" alt="합성 이미지">';
+  aiText.appendChild(compImg);
+
+  // 이미지에 합성된 상품 section
+  const cTitle = document.createElement('div');
+  cTitle.className = 'combined-products-title';
+  cTitle.textContent = '이미지에 합성된 상품';
+  aiText.appendChild(cTitle);
+
+  const cps = document.createElement('div');
+  cps.className = 'combined-products';
+  const initialItems = [
+    { img:'/assets/c3d4c42d-8f9c-4e4b-b4bc-71ea63290ffa.jpg', brand:'오트밀하우스', name:'파로마 포미 아쿠아텍스', price:'199,000', type:'rug' },
+    { img:'/assets/f6f9fde1-3a7d-44f3-b88b-34d93ff2673b.jpg', brand:'까르엠가구', name:'파로마 포미 아쿠아텍스', price:'199,000', type:'objet' },
+  ];
+  initialItems.forEach((p, idx) => {
+    const el = document.createElement('div');
+    el.className = 'combined-product';
+    el.innerHTML = `
+      <div class="combined-product-img"><img src="${p.img}" alt="${p.name}"><button class="combined-product-bookmark" onclick="event.stopPropagation();this.classList.toggle('filled')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M15.5 3C16.8058 3 17.9293 3.298 18.7157 4.084C19.5021 4.871 19.8 5.994 19.8 7.3V19.694C19.8 20.242 19.5446 20.743 19.1101 21.039C18.666 21.342 18.0876 21.392 17.5632 21.133L12 18.034L6.472 21.114C5.912 21.392 5.334 21.342 4.89 21.039C4.455 20.743 4.2 20.242 4.2 19.694V7.3C4.2 5.994 4.498 4.871 5.284 4.084C6.071 3.298 7.194 3 8.5 3H15.5Z" fill="white" stroke="white" stroke-width="0.5"/></svg></button></div>
+      <button class="combined-product-place">배치하기</button>
+      <div class="combined-product-name"><b>${p.brand}</b> ${p.name}</div>
+      <div class="combined-product-price">${p.price}</div>`;
+    el.querySelector('.combined-product-place').onclick = () => openPlacement(p);
+    cps.appendChild(el);
+  });
+  aiText.appendChild(cps);
+
+  aiMsg.appendChild(aiText);
+  chatBody.appendChild(aiMsg);
+
+  // 카테고리별 추천 상품 섹션
+  appendCategoryRecommendations();
+
+  // Divider + 후속 메시지 + 추천된 다른 상품도 합성해보기 followup
+  appendDivider();
+  appendHtml('<div class="chat-item-body">해당 스타일 마음에 드시나요?\n추가적인 상품 합성도 받아볼 수 있어요</div>');
+
+  const fu = document.createElement('div');
+  fu.className = 'followup';
+  fu.innerHTML = '<div class="followup-icon"><img src="/assets/arrow-reply.svg" alt="reply"></div><img class="followup-badge-icon" src="/assets/sparkles-house-filled.svg" alt=""><div class="followup-text">추천된 다른 상품도 합성해보기</div>';
+  fu.onclick = () => openProductSheet();
+  chatBody.appendChild(fu);
+
+  appendDivider();
+
+  const fu2 = document.createElement('div');
+  fu2.className = 'followup';
+  fu2.innerHTML = '<div class="followup-icon"><img src="/assets/arrow-reply.svg" alt="reply"></div><div class="followup-text">오브제 각도 바꿔줘</div>';
+  chatBody.appendChild(fu2);
+  // 결과 화면은 자동 스크롤 X — 유저가 직접 스크롤하도록
+}
+
+// === 합성 전/후 비교 카로셀 (Figma 1431:5593 - 상단 progress bar) ===
+const SLIDE_GAP = 6;
+const PEEK_PX = 6;
+function createCompositedCarousel(images) {
+  const wrap = document.createElement('div');
+  wrap.className = 'composited-carousel-wrap';
+
+  // 상단 프로그레스 바
+  const progress = document.createElement('div');
+  progress.className = 'composited-progress';
+  const segments = images.map(() => {
+    const seg = document.createElement('div');
+    seg.className = 'composited-progress-segment';
+    progress.appendChild(seg);
+    return seg;
+  });
+  wrap.appendChild(progress);
+
+  const carousel = document.createElement('div');
+  carousel.className = 'composited-carousel';
+  const track = document.createElement('div');
+  track.className = 'composited-carousel-track';
+  images.forEach(src => {
+    const slide = document.createElement('div');
+    slide.className = 'composited-carousel-slide';
+    slide.innerHTML = `<img src="${src}" alt="합성 이미지" draggable="false">`;
+    track.appendChild(slide);
+  });
+  carousel.appendChild(track);
+  wrap.appendChild(carousel);
+
+  let currentIdx = images.length - 1; // 디폴트로 마지막 슬라이드
+  const total = images.length;
+
+  function getWidth() { return carousel.clientWidth; }
+  function offsetForIdx(idx) {
+    // peek 없이, 활성 슬라이드 중앙 정렬
+    return -idx * (getWidth() + SLIDE_GAP);
+  }
+
+  function setIndex(idx, animate) {
+    currentIdx = Math.max(0, Math.min(total - 1, idx));
+    track.classList.toggle('animating', !!animate);
+    track.style.transform = `translateX(${offsetForIdx(currentIdx)}px)`;
+    segments.forEach((seg, i) => seg.classList.toggle('active', i === currentIdx));
+  }
+  requestAnimationFrame(() => requestAnimationFrame(() => setIndex(currentIdx, false)));
+
+  // Pointer 드래그
+  let isDown = false, startX = 0, startTransform = 0, dragDx = 0, startTime = 0;
+
+  track.addEventListener('pointerdown', (e) => {
+    isDown = true; dragDx = 0;
+    startX = e.clientX;
+    startTime = Date.now();
+    startTransform = offsetForIdx(currentIdx);
+    track.classList.remove('animating');
+    track.classList.add('dragging');
+    try { track.setPointerCapture(e.pointerId); } catch(_) {}
+  });
+  track.addEventListener('pointermove', (e) => {
+    if (!isDown) return;
+    dragDx = e.clientX - startX;
+    let tx = startTransform + dragDx;
+    const maxX = offsetForIdx(0);
+    const minX = offsetForIdx(total - 1);
+    if (tx > maxX) tx = maxX + (tx - maxX) * 0.3;
+    else if (tx < minX) tx = minX + (tx - minX) * 0.3;
+    track.style.transform = `translateX(${tx}px)`;
+  });
+  function endDrag(e) {
+    if (!isDown) return;
+    isDown = false;
+    track.classList.remove('dragging');
+    const w = getWidth();
+    const elapsed = Date.now() - startTime;
+    const velocity = Math.abs(dragDx) / Math.max(1, elapsed);
+    let nextIdx = currentIdx;
+    if (Math.abs(dragDx) > w * 0.3 || velocity > 0.5) {
+      nextIdx = dragDx < 0 ? currentIdx + 1 : currentIdx - 1;
+    }
+    setIndex(nextIdx, true);
+  }
+  track.addEventListener('pointerup', endDrag);
+  track.addEventListener('pointercancel', endDrag);
+
+  return wrap;
+}
+
+// === 카테고리별 추천 상품 (Figma 1431:5807) ===
+const CATEGORY_RUGS = [
+  { img:'/assets/5eddcf76-9c49-40e0-b149-aa94b551ea37.jpg', brand:'오트밀하우스', name:'올라 포르투갈 코튼 러그 7size', price:'199,000', type:'rug' },
+  { img:'/assets/25674132-b83e-4817-b1c2-70cc1832a5f5.jpg', brand:'까르엠가구', name:'플라레 빈티지 워셔블 스트라이프 침대 미니 러그', price:'199,000', type:'rug' },
+  { img:'/assets/b1644ee5-6a77-49aa-98eb-00c5d454a888.jpg', brand:'까르엠가구', name:'먼지없는 크로캣 레드 스트라이프 패턴 거실카페트 거실 러그', price:'199,000', type:'rug' },
+];
+const CATEGORY_OBJETS = [
+  { img:'/assets/f6f9fde1-3a7d-44f3-b88b-34d93ff2673b.jpg', brand:'오트밀하우스', name:'링베이스 세라믹 꽃병 인테리어 오브제 도자기 화병 - C', price:'199,000', type:'objet' },
+  { img:'/assets/8dcf8860-ce68-4f41-a46a-d51b3cc0eed5.jpg', brand:'까르엠가구', name:'이오난사 모스트레이 공기정화 오브제 선물 SET', price:'199,000', type:'objet' },
+  { img:'/assets/d698992a-9bbf-4f10-8f77-83edf9690fb4.jpg', brand:'까르엠가구', name:'3색마카+꼭꼬핀증정 무타공 인테리어 원형 볼록거울 오브제 포토존 집들이 선물 35cm', price:'199,000', type:'objet' },
+];
+
+function appendCategoryRecommendations() {
+  appendDivider();
+  appendHtml('<div class="chat-section-title">카테고리별 추천 상품</div>');
+  appendHtml('<div class="category-subtitle">1. 러그</div>');
+  chatBody.appendChild(createCategoryProductScroll(CATEGORY_RUGS));
+  appendHtml('<div class="category-subtitle">2. 오브제</div>');
+  chatBody.appendChild(createCategoryProductScroll(CATEGORY_OBJETS));
+}
+
+function createCategoryProductScroll(items) {
+  const wrap = document.createElement('div');
+  wrap.className = 'category-product-scroll';
+  items.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'combined-product';
+    el.innerHTML = `
+      <div class="combined-product-img">
+        <img src="${p.img}" alt="${p.name}">
+        <button class="combined-product-bookmark" onclick="event.stopPropagation();this.classList.toggle('filled')">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M15.5 3C16.8058 3 17.9293 3.298 18.7157 4.084C19.5021 4.871 19.8 5.994 19.8 7.3V19.694C19.8 20.242 19.5446 20.743 19.1101 21.039C18.666 21.342 18.0876 21.392 17.5632 21.133L12 18.034L6.472 21.114C5.912 21.392 5.334 21.342 4.89 21.039C4.455 20.743 4.2 20.242 4.2 19.694V7.3C4.2 5.994 4.498 4.871 5.284 4.084C6.071 3.298 7.194 3 8.5 3H15.5Z" fill="white" stroke="white" stroke-width="0.5"/></svg>
+        </button>
+      </div>
+      <button class="combined-product-place">배치하기</button>
+      <div class="combined-product-name"><b>${p.brand}</b> ${p.name}</div>
+      <div class="combined-product-price">${p.price}</div>`;
+    el.querySelector('.combined-product-place').onclick = () => openPlacement(p);
+    wrap.appendChild(el);
+  });
+  return wrap;
+}
+</script>
+</body>
+</html>
